@@ -1,0 +1,10 @@
+[Unit]
+Description=Actualisation des stratégies de groupe toutes les 90 minutes (± 30)
+
+[Timer]
+OnBootSec=90min
+OnUnitActiveSec=90min
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target

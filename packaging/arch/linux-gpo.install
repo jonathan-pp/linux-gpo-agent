@@ -1,0 +1,15 @@
+post_install() {
+  mkdir -p /var/lib/linux-gpo /var/cache/linux-gpo
+  chmod 700 /var/lib/linux-gpo /var/cache/linux-gpo
+  systemctl daemon-reload
+  systemctl enable linux-gpo.service linux-gpo.timer
+  systemctl start linux-gpo.timer
+  systemctl --global enable linux-gpo-utilisateur.service linux-gpo-utilisateur-actualiser.timer
+  echo "linux-gpo installé : « linux-gpo diagnostic » vérifie la jonction au domaine."
+}
+post_upgrade() { systemctl daemon-reload; }
+pre_remove() {
+  /usr/bin/linux-gpo retirer-tout || true
+  systemctl disable --now linux-gpo.timer linux-gpo.service
+  systemctl --global disable linux-gpo-utilisateur.service linux-gpo-utilisateur-actualiser.timer
+}

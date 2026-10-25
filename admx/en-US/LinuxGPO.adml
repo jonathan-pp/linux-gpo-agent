@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Généré par admx/generer.py (linux-gpo) : ne pas modifier à la main. -->
+<policyDefinitionResources xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" revision="1.0" schemaVersion="1.0" xmlns="http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions">
+  <displayName>linux-gpo</displayName>
+  <description>Group Policy for Linux computers</description>
+  <resources>
+    <stringTable>
+      <string id="SUPPORTED_LinuxGPO">Linux computers running the linux-gpo agent</string>
+      <string id="cat_Linux">Linux (linux-gpo)</string>
+      <string id="cat_Bureau">Desktop</string>
+      <string id="cat_Droits">User rights</string>
+      <string id="cat_Securite">Security</string>
+      <string id="cat_Systeme">System</string>
+      <string id="cat_Logiciels">Software and scripts</string>
+      <string id="DisableCommandLine">Prohibit the terminal and the Run command</string>
+      <string id="DisableCommandLine_Aide">Enabled: users can no longer open a terminal or run commands (Alt+F2, KRunner). GNOME, Cinnamon, MATE, KDE Plasma.
+
+Applied by linux-gpo.</string>
+      <string id="DisablePrinting">Prohibit printing</string>
+      <string id="DisablePrinting_Aide">Enabled: printing and print setup are prohibited (GNOME, MATE, KDE Plasma).
+
+Applied by linux-gpo.</string>
+      <string id="DisableSaveToDisk">Prohibit saving files</string>
+      <string id="DisableSaveToDisk_Aide">Enabled: applications that honour this setting can no longer save files to disk (GNOME, MATE, KDE Plasma).
+
+Applied by linux-gpo.</string>
+      <string id="DisableLogout">Prohibit log out</string>
+      <string id="DisableLogout_Aide">Enabled: the log out action is removed (kiosk).
+
+Applied by linux-gpo.</string>
+      <string id="DisableUserSwitching">Prohibit user switching</string>
+      <string id="DisableUserSwitching_Aide">Enabled: only one user session at a time.
+
+Applied by linux-gpo.</string>
+      <string id="LockDelay">Lock the screen after inactivity</string>
+      <string id="LockDelay_Aide">Enabled: the screen locks after the given delay (seconds).
+
+Applied by linux-gpo.</string>
+      <string id="Wallpaper">Desktop wallpaper</string>
+      <string id="Wallpaper_Aide">Enabled: sets the desktop wallpaper (local path; a UNC path is accepted in User Configuration).
+
+Applied by linux-gpo.</string>
+      <string id="HideUserList">Login screen: do not show the user list</string>
+      <string id="HideUserList_Aide">Enabled: users type their user name (GDM, SDDM, LightDM).
+
+Applied by linux-gpo.</string>
+      <string id="LoginBanner">Login screen: banner message</string>
+      <string id="LoginBanner_Aide">Enabled: message shown on the GNOME login screen (GDM).
+
+Applied by linux-gpo.</string>
+      <string id="DenyRemovableStorage">Removable storage (USB keys, external drives)</string>
+      <string id="DenyRemovableStorage_Aide">Enabled: non-administrators can no longer mount removable media; optionally the USB storage driver is blocked.
+
+Applied by linux-gpo.</string>
+      <string id="DenyRemovableStorage_1">Prohibit mounting</string>
+      <string id="DenyRemovableStorage_2">Prohibit mounting and block the USB driver</string>
+      <string id="DenyPowerOff">Prohibit shutdown and restart</string>
+      <string id="DenyPowerOff_Aide">Enabled: only local administrators can shut down, restart or suspend.
+
+Applied by linux-gpo.</string>
+      <string id="DenySoftwareInstall">Prohibit software installation</string>
+      <string id="DenySoftwareInstall_Aide">Enabled: users cannot install software (GNOME Software, Discover, Flatpak, Snap).
+
+Applied by linux-gpo.</string>
+      <string id="DenyNetworkConfig">Prohibit changing network connections</string>
+      <string id="DenyNetworkConfig_Aide">Enabled: users cannot change NetworkManager connections.
+
+Applied by linux-gpo.</string>
+      <string id="AdminGroups">Local administrator groups</string>
+      <string id="AdminGroups_Aide">Groups exempted from the restrictions above, separated by “;”.
+
+Applied by linux-gpo.</string>
+      <string id="SudoRules">Sudo rights</string>
+      <string id="SudoRules_Aide">One sudoers rule per line; name domain accounts DOMAIN\name.
+
+Applied by linux-gpo.</string>
+      <string id="AccessAllow">Logon: allowed accounts</string>
+      <string id="AccessAllow_Aide">Enabled: only these domain users or groups (DOMAIN\name) can log on.
+
+Applied by linux-gpo.</string>
+      <string id="AccessDeny">Logon: denied accounts</string>
+      <string id="AccessDeny_Aide">Enabled: these accounts cannot log on.
+
+Applied by linux-gpo.</string>
+      <string id="Ssh">SSH server</string>
+      <string id="Ssh_Aide">sshd directives (name → value), checked with “sshd -t”.
+
+Applied by linux-gpo.</string>
+      <string id="FirewallRules">Firewall: rules</string>
+      <string id="FirewallRules_Aide">One rule per line: “action;port/protocol or service;source”.
+
+Applied by linux-gpo.</string>
+      <string id="Messages">Logon messages</string>
+      <string id="Messages_Aide">Message shown before logon (/etc/issue) and after logon (/etc/motd).
+
+Applied by linux-gpo.</string>
+      <string id="Updates">Automatic updates</string>
+      <string id="Updates_Aide">Installs updates automatically.
+
+Applied by linux-gpo.</string>
+      <string id="Mode_0">None</string>
+      <string id="Mode_1">Security fixes</string>
+      <string id="Mode_2">All</string>
+      <string id="Time">Synchronise time with the domain</string>
+      <string id="Time_Aide">Enabled: time is synchronised with the domain controllers (or the given servers).
+
+Applied by linux-gpo.</string>
+      <string id="Files">Files to copy to the computer</string>
+      <string id="Files_Aide">Name = path on the computer, value = “\\server\share\file;mode;owner:group”.
+
+Applied by linux-gpo.</string>
+      <string id="SoftwareInstall">Packages to install</string>
+      <string id="SoftwareInstall_Aide">One package per line, optionally per package manager.
+
+Applied by linux-gpo.</string>
+      <string id="SoftwareRemove">Packages to remove</string>
+      <string id="SoftwareRemove_Aide">One package per line.
+
+Applied by linux-gpo.</string>
+      <string id="Flatpak">Flatpak applications to install</string>
+      <string id="Flatpak_Aide">Flathub application IDs.
+
+Applied by linux-gpo.</string>
+      <string id="StartupScripts">Startup scripts</string>
+      <string id="StartupScripts_Aide">Name = label, value = command run as root at startup.
+
+Applied by linux-gpo.</string>
+      <string id="DailyScripts">Daily scripts</string>
+      <string id="DailyScripts_Aide">Name = label, value = command run daily as root.
+
+Applied by linux-gpo.</string>
+      <string id="LogonScripts">Logon scripts</string>
+      <string id="LogonScripts_Aide">Name = label, value = command run as the user at logon.
+
+Applied by linux-gpo.</string>
+    </stringTable>
+    <presentationTable>
+      <presentation id="LockDelay"><decimalTextBox refId="LockDelay" defaultValue="600">Delay (seconds):</decimalTextBox></presentation>
+      <presentation id="Wallpaper"><textBox refId="Wallpaper"><label>Image path:</label></textBox></presentation>
+      <presentation id="LoginBanner"><multiTextBox refId="LoginBanner">Message:</multiTextBox></presentation>
+      <presentation id="DenyRemovableStorage"><dropdownList refId="DenyRemovableStorage" noSort="true" defaultItem="0">Restriction:</dropdownList></presentation>
+      <presentation id="AdminGroups"><textBox refId="AdminGroups"><label>Groups:</label></textBox></presentation>
+      <presentation id="SudoRules"><listBox refId="SudoRules">Rules:</listBox></presentation>
+      <presentation id="AccessAllow"><listBox refId="AccessAllow">Accounts:</listBox></presentation>
+      <presentation id="AccessDeny"><listBox refId="AccessDeny">Accounts:</listBox></presentation>
+      <presentation id="Ssh"><listBox refId="Ssh">Directives:</listBox></presentation>
+      <presentation id="FirewallRules"><listBox refId="FirewallRules">Rules:</listBox></presentation>
+      <presentation id="Messages"><multiTextBox refId="issue">Before logon:</multiTextBox><multiTextBox refId="motd">After logon:</multiTextBox></presentation>
+      <presentation id="Updates"><dropdownList refId="Mode" noSort="true" defaultItem="1">Updates:</dropdownList><textBox refId="Time"><label>Time (HH:MM):</label><defaultValue>03:00</defaultValue></textBox><checkBox refId="Reboot">Restart automatically when required</checkBox></presentation>
+      <presentation id="Time"><textBox refId="NtpServers"><label>Servers (optional, space separated):</label></textBox></presentation>
+      <presentation id="Files"><listBox refId="Files">Files:</listBox></presentation>
+      <presentation id="SoftwareInstall"><listBox refId="SoftwareInstall">Packages:</listBox></presentation>
+      <presentation id="SoftwareRemove"><listBox refId="SoftwareRemove">Packages:</listBox></presentation>
+      <presentation id="Flatpak"><listBox refId="Flatpak">Applications:</listBox></presentation>
+      <presentation id="StartupScripts"><listBox refId="StartupScripts">Scripts:</listBox></presentation>
+      <presentation id="DailyScripts"><listBox refId="DailyScripts">Scripts:</listBox></presentation>
+      <presentation id="LogonScripts"><listBox refId="LogonScripts">Scripts:</listBox></presentation>
+    </presentationTable>
+  </resources>
+</policyDefinitionResources>

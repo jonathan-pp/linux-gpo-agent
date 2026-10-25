@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
+  </defs>
+  <rect width="1000" height="600" fill="#ffffff"/>
+  <!-- outils d'administration -->
+  <rect x="30" y="30" width="280" height="150" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="170" y="62" text-anchor="middle" font-size="19" font-weight="700" fill="#1e3a8a">Vous (administrateur)</text>
+  <text x="170" y="94" text-anchor="middle" font-size="15" fill="#334155">Console GPO de Windows</text>
+  <text x="170" y="116" text-anchor="middle" font-size="15" fill="#334155">(modèles ADMX fournis)</text>
+  <text x="170" y="146" text-anchor="middle" font-size="15" fill="#334155">ou Console Annuaire (web)</text>
+  <!-- domaine -->
+  <rect x="380" y="30" width="300" height="150" rx="12" fill="#2563eb"/>
+  <text x="530" y="64" text-anchor="middle" font-size="21" font-weight="700" fill="#fff">Domaine Active Directory</text>
+  <text x="530" y="94" text-anchor="middle" font-size="15" fill="#dbeafe">Windows Server ou Samba</text>
+  <text x="530" y="126" text-anchor="middle" font-size="14" fill="#bfdbfe">LDAP : comptes, groupes, liaisons</text>
+  <text x="530" y="148" text-anchor="middle" font-size="14" fill="#bfdbfe">SYSVOL : contenu des GPO</text>
+  <line x1="310" y1="105" x2="376" y2="105" stroke="#475569" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="343" y="96" text-anchor="middle" font-size="12" fill="#475569">règles</text>
+  <!-- postes windows -->
+  <rect x="750" y="30" width="220" height="150" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
+  <text x="860" y="66" text-anchor="middle" font-size="18" font-weight="700" fill="#334155">Postes Windows</text>
+  <text x="860" y="98" text-anchor="middle" font-size="14" fill="#64748b">appliquent les GPO</text>
+  <text x="860" y="120" text-anchor="middle" font-size="14" fill="#64748b">eux-mêmes</text>
+  <line x1="680" y1="105" x2="746" y2="105" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#a)"/>
+  <!-- agent -->
+  <line x1="530" y1="180" x2="530" y2="236" stroke="#475569" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="545" y="214" font-size="13" fill="#475569">Kerberos (compte du poste) : toutes les 90 min + au démarrage</text>
+  <rect x="190" y="240" width="680" height="330" rx="14" fill="#f8fafc" stroke="#16a34a" stroke-width="2.5"/>
+  <text x="530" y="272" text-anchor="middle" font-size="20" font-weight="700" fill="#14532d">Poste Linux + agent linux-gpo</text>
+  <text x="530" y="296" text-anchor="middle" font-size="14" fill="#475569">Debian · Ubuntu · Mint · Arch · Fedora · openSUSE · NixOS — GNOME · KDE · Cinnamon · MATE</text>
+  <g font-size="14" fill="#0f172a">
+    <rect x="215" y="314" width="200" height="66" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="315" y="340" text-anchor="middle" font-weight="700">Sécurité</text><text x="315" y="362" text-anchor="middle" font-size="12">sudo · SSH · pare-feu · connexion</text>
+    <rect x="430" y="314" width="200" height="66" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="530" y="340" text-anchor="middle" font-weight="700">Bureau</text><text x="530" y="362" text-anchor="middle" font-size="12">verrous · écran · terminal · fond</text>
+    <rect x="645" y="314" width="200" height="66" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="745" y="340" text-anchor="middle" font-weight="700">Droits</text><text x="745" y="362" text-anchor="middle" font-size="12">clés USB · arrêt · logiciels · réseau</text>
+    <rect x="215" y="394" width="200" height="66" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="315" y="420" text-anchor="middle" font-weight="700">Système</text><text x="315" y="442" text-anchor="middle" font-size="12">mises à jour · heure · messages</text>
+    <rect x="430" y="394" width="200" height="66" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="530" y="420" text-anchor="middle" font-weight="700">Logiciels</text><text x="530" y="442" text-anchor="middle" font-size="12">paquets · Flatpak · scripts · fichiers</text>
+    <rect x="645" y="394" width="200" height="66" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="745" y="420" text-anchor="middle" font-weight="700">Navigateurs</text><text x="745" y="442" text-anchor="middle" font-size="12">Firefox · Chrome · Edge · Brave</text>
+    <rect x="215" y="474" width="630" height="58" rx="8" fill="#fef9c3" stroke="#ca8a04"/>
+    <text x="530" y="498" text-anchor="middle" font-weight="700">Session de l’utilisateur</text><text x="530" y="518" text-anchor="middle" font-size="12">lecteurs réseau · écran de veille · papier peint · scripts d’ouverture de session</text>
+  </g>
+  <text x="530" y="556" text-anchor="middle" font-size="13" fill="#64748b">un réglage retiré de la GPO est retiré du poste (fichiers d’origine remis)</text>
+</svg>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 587" font-family="DejaVu Sans Mono, Consolas, monospace" font-size="14">
+<rect width="900" height="587" rx="10" fill="#0f172a"/>
+<circle cx="22" cy="18" r="6" fill="#ef4444"/><circle cx="42" cy="18" r="6" fill="#eab308"/><circle cx="62" cy="18" r="6" fill="#22c55e"/>
+<text x="450" y="23" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13">zz-debian — résultat après « linux-gpo appliquer »</text>
+<text x="18" y="56" fill="#93c5fd" xml:space="preserve">$ linux-gpo resultat</text>
+<text x="18" y="77" fill="#e2e8f0" xml:space="preserve">Dernier passage : 2026-10-25 19:24:49 — contrôleur dc01.exemple.local</text>
+<text x="18" y="98" fill="#e2e8f0" xml:space="preserve"></text>
+<text x="18" y="119" fill="#fde68a" xml:space="preserve">GPO appliquées (dans l’ordre, la dernière l’emporte) :</text>
+<text x="18" y="140" fill="#e2e8f0" xml:space="preserve">  Default Domain Policy  {31B2F340-016D-11D2-945F-00C04FB984F9}</text>
+<text x="18" y="161" fill="#e2e8f0" xml:space="preserve">  zz-linux-gpo  {29FD2328-B1F5-42BD-AE1A-F68E5292CDE6}</text>
+<text x="18" y="182" fill="#e2e8f0" xml:space="preserve"></text>
+<text x="18" y="203" fill="#fde68a" xml:space="preserve">sudo :</text>
+<text x="18" y="224" fill="#e2e8f0" xml:space="preserve">  zz-util@exemple.local ALL=(root) /usr/bin/systemctl status *</text>
+<text x="18" y="245" fill="#e2e8f0" xml:space="preserve">  %zz-linux-admins@exemple.local ALL=(ALL) NOPASSWD: ALL</text>
+<text x="18" y="266" fill="#fde68a" xml:space="preserve">ssh :</text>
+<text x="18" y="287" fill="#e2e8f0" xml:space="preserve">  PermitRootLogin no</text>
+<text x="18" y="308" fill="#e2e8f0" xml:space="preserve">  MaxAuthTries 3</text>
+<text x="18" y="329" fill="#fde68a" xml:space="preserve">bureau :</text>
+<text x="18" y="350" fill="#e2e8f0" xml:space="preserve">  terminal : oui</text>
+<text x="18" y="371" fill="#e2e8f0" xml:space="preserve">  verrou : 600</text>
+<text x="18" y="392" fill="#e2e8f0" xml:space="preserve">  liste_masquee : oui</text>
+<text x="18" y="413" fill="#fde68a" xml:space="preserve">droits :</text>
+<text x="18" y="434" fill="#e2e8f0" xml:space="preserve">  interdit aux non-administrateurs : supports amovibles</text>
+<text x="18" y="455" fill="#e2e8f0" xml:space="preserve">  interdit aux non-administrateurs : extinction et redémarrage</text>
+<text x="18" y="476" fill="#e2e8f0" xml:space="preserve">  interdit aux non-administrateurs : installation de logiciels</text>
+<text x="18" y="497" fill="#e2e8f0" xml:space="preserve">  pilote de stockage USB bloqué</text>
+<text x="18" y="518" fill="#fde68a" xml:space="preserve">navigateurs :</text>
+<text x="18" y="539" fill="#e2e8f0" xml:space="preserve">  Firefox : 3 réglage(s) → /etc/firefox/policies/policies.json</text>
+<text x="18" y="560" fill="#e2e8f0" xml:space="preserve">  Chrome : 6 réglage(s) → /etc/opt/chrome/policies</text>
+</svg>

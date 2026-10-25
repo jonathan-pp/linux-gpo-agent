@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Généré par admx/generer.py (linux-gpo) : ne pas modifier à la main. -->
+<policyDefinitionResources xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" revision="1.0" schemaVersion="1.0" xmlns="http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions">
+  <displayName>linux-gpo</displayName>
+  <description>Stratégies de groupe pour les postes Linux</description>
+  <resources>
+    <stringTable>
+      <string id="SUPPORTED_LinuxGPO">Postes Linux avec l’agent linux-gpo</string>
+      <string id="cat_Linux">Linux (linux-gpo)</string>
+      <string id="cat_Bureau">Bureau</string>
+      <string id="cat_Droits">Droits des utilisateurs</string>
+      <string id="cat_Securite">Sécurité</string>
+      <string id="cat_Systeme">Système</string>
+      <string id="cat_Logiciels">Logiciels et scripts</string>
+      <string id="DisableCommandLine">Interdire le terminal et la commande « Exécuter »</string>
+      <string id="DisableCommandLine_Aide">Activé : les utilisateurs ne peuvent plus ouvrir de terminal ni lancer de commande (Alt+F2, KRunner). GNOME, Cinnamon, MATE, KDE Plasma. Équivalent Linux de « Désactiver l’accès à l’invite de commandes » (barrière d’interface, pas une sécurité absolue).
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="DisablePrinting">Interdire l’impression</string>
+      <string id="DisablePrinting_Aide">Activé : impression et configuration de l’impression interdites (GNOME, MATE, KDE Plasma).
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="DisableSaveToDisk">Interdire l’enregistrement de fichiers</string>
+      <string id="DisableSaveToDisk_Aide">Activé : les applications qui respectent ce réglage n’enregistrent plus de fichiers sur le disque (GNOME, MATE, KDE Plasma).
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="DisableLogout">Interdire la déconnexion</string>
+      <string id="DisableLogout_Aide">Activé : le bouton de déconnexion disparaît (poste en libre-service, kiosque).
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="DisableUserSwitching">Interdire le changement d’utilisateur</string>
+      <string id="DisableUserSwitching_Aide">Activé : un seul utilisateur à la fois sur le poste.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="LockDelay">Verrouiller l’écran après une période d’inactivité</string>
+      <string id="LockDelay_Aide">Activé : l’écran se verrouille après le délai indiqué (secondes). Côté ordinateur, le réglage est imposé ; côté utilisateur, il est remis à chaque session. Repris aussi de la stratégie Windows « Ouverture de session interactive : limite d’inactivité ».
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="Wallpaper">Image de fond du bureau</string>
+      <string id="Wallpaper_Aide">Activé : impose l’image de fond. Côté ordinateur : chemin d’une image présente sur le poste (/usr/share/…, ou déployée par « Fichiers à copier ») ; côté utilisateur, un chemin réseau \\serveur\partage\image.jpg est aussi accepté. GNOME, Cinnamon, MATE (KDE Plasma : côté utilisateur seulement).
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="HideUserList">Écran de connexion : ne pas afficher la liste des utilisateurs</string>
+      <string id="HideUserList_Aide">Activé : l’utilisateur saisit son nom (GDM, SDDM, LightDM). Repris aussi de « Ne pas afficher le dernier nom d’utilisateur ».
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="LoginBanner">Écran de connexion : message affiché</string>
+      <string id="LoginBanner_Aide">Activé : message affiché sur l’écran de connexion GNOME (GDM). Le message légal de Windows est aussi repris.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="DenyRemovableStorage">Supports amovibles (clés USB, disques externes)</string>
+      <string id="DenyRemovableStorage_Aide">Activé : les utilisateurs non administrateurs ne peuvent plus monter de support amovible ; avec « bloquer aussi le pilote », le stockage USB est désactivé pour tous. La stratégie Windows « Toutes les classes de stockage amovible : refuser tout accès » a le même effet.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="DenyRemovableStorage_1">Interdire le montage</string>
+      <string id="DenyRemovableStorage_2">Interdire le montage et bloquer le pilote USB</string>
+      <string id="DenyPowerOff">Interdire l’arrêt et le redémarrage</string>
+      <string id="DenyPowerOff_Aide">Activé : seuls les administrateurs du poste peuvent arrêter, redémarrer ou mettre en veille.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="DenySoftwareInstall">Interdire l’installation de logiciels</string>
+      <string id="DenySoftwareInstall_Aide">Activé : installation de logiciels interdite aux utilisateurs (Logithèque, Discover, Flatpak, Snap).
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="DenyNetworkConfig">Interdire la modification des connexions réseau</string>
+      <string id="DenyNetworkConfig_Aide">Activé : les connexions NetworkManager ne peuvent plus être modifiées par les utilisateurs.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="AdminGroups">Groupes administrateurs du poste</string>
+      <string id="AdminGroups_Aide">Groupes non concernés par les interdictions ci-dessus, séparés par « ; » (ex. sudo;wheel;DOMAINE\Support). Par défaut : sudo, wheel, admin et les Admins du domaine.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="SudoRules">Droits sudo</string>
+      <string id="SudoRules_Aide">Une règle sudoers par ligne ; nommez les comptes du domaine DOMAINE\nom (groupe : %DOMAINE\groupe), échappez les espaces (%DOMAINE\Admins\ du\ domaine). Exemple : %EXEMPLE\Support ALL=(ALL) ALL. Les noms sont adaptés au poste (sssd ou winbind) et chaque règle est vérifiée par visudo.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="AccessAllow">Ouverture de session : comptes autorisés</string>
+      <string id="AccessAllow_Aide">Activé : seuls ces utilisateurs ou groupes du domaine (DOMAINE\nom) peuvent ouvrir une session. root et les comptes locaux ne sont jamais bloqués.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="AccessDeny">Ouverture de session : comptes refusés</string>
+      <string id="AccessDeny_Aide">Activé : ces utilisateurs ou groupes du domaine ne peuvent pas ouvrir de session.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="Ssh">Serveur SSH</string>
+      <string id="Ssh_Aide">Directives de sshd (nom → valeur), par exemple PermitRootLogin → no, PasswordAuthentication → no, AllowGroups → … Vérifiées par « sshd -t » avant d’être appliquées.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="FirewallRules">Pare-feu : règles</string>
+      <string id="FirewallRules_Aide">Une règle par ligne : « action;port/protocole ou service;source », action = accept, reject ou drop. Exemples : accept;22/tcp;10.0.0.0/8 — drop;telnet; — accept;8000-8080/tcp;. Appliquées avec firewalld, ufw ou nftables selon le poste.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="Messages">Messages de connexion</string>
+      <string id="Messages_Aide">Message affiché avant la connexion en console et SSH (/etc/issue) et après la connexion (/etc/motd).
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="Updates">Mises à jour automatiques</string>
+      <string id="Updates_Aide">Installe automatiquement les mises à jour (Debian/Ubuntu : unattended-upgrades ; Fedora : dnf ; Arch : pacman -Syu ; openSUSE : zypper). « Aucune » arrête les mises à jour automatiques ; Désactivé ou Non configuré : le réglage du poste n’est pas modifié.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="Mode_0">Aucune</string>
+      <string id="Mode_1">Correctifs de sécurité</string>
+      <string id="Mode_2">Toutes</string>
+      <string id="Time">Synchroniser l’heure sur le domaine</string>
+      <string id="Time_Aide">Activé : l’heure est prise sur les contrôleurs du domaine (ou les serveurs indiqués). Kerberos exige moins de 5 minutes d’écart.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="Files">Fichiers à copier sur le poste</string>
+      <string id="Files_Aide">Nom = chemin sur le poste (/etc/…), valeur = « \\serveur\partage\fichier;droits;propriétaire:groupe » (droits et propriétaire facultatifs, par défaut 0644 root:root). Le fichier est lu avec le compte de l’ordinateur (donnez-lui la lecture).
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="SoftwareInstall">Paquets à installer</string>
+      <string id="SoftwareInstall_Aide">Un paquet par ligne : « nom », ou un nom par gestionnaire : « apt:libreoffice pacman:libreoffice-fresh dnf:libreoffice ».
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="SoftwareRemove">Paquets à désinstaller</string>
+      <string id="SoftwareRemove_Aide">Un paquet par ligne (même format).
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="Flatpak">Applications Flatpak à installer</string>
+      <string id="Flatpak_Aide">Identifiants Flathub, un par ligne (ex. org.libreoffice.LibreOffice, org.mozilla.Thunderbird).
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="StartupScripts">Scripts de démarrage</string>
+      <string id="StartupScripts_Aide">Nom = libellé, valeur = commande lancée en root à chaque démarrage.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="DailyScripts">Scripts quotidiens</string>
+      <string id="DailyScripts_Aide">Nom = libellé, valeur = commande lancée en root une fois par jour.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+      <string id="LogonScripts">Scripts d’ouverture de session</string>
+      <string id="LogonScripts_Aide">Nom = libellé, valeur = commande lancée avec les droits de l’utilisateur à l’ouverture de session.
+
+Appliqué par linux-gpo (https://github.com/jonathan-pp/linux-gpo-agent).</string>
+    </stringTable>
+    <presentationTable>
+      <presentation id="LockDelay"><decimalTextBox refId="LockDelay" defaultValue="600">Délai (secondes) :</decimalTextBox></presentation>
+      <presentation id="Wallpaper"><textBox refId="Wallpaper"><label>Chemin de l’image :</label></textBox></presentation>
+      <presentation id="LoginBanner"><multiTextBox refId="LoginBanner">Message :</multiTextBox></presentation>
+      <presentation id="DenyRemovableStorage"><dropdownList refId="DenyRemovableStorage" noSort="true" defaultItem="0">Restriction :</dropdownList></presentation>
+      <presentation id="AdminGroups"><textBox refId="AdminGroups"><label>Groupes :</label></textBox></presentation>
+      <presentation id="SudoRules"><listBox refId="SudoRules">Règles :</listBox></presentation>
+      <presentation id="AccessAllow"><listBox refId="AccessAllow">Comptes :</listBox></presentation>
+      <presentation id="AccessDeny"><listBox refId="AccessDeny">Comptes :</listBox></presentation>
+      <presentation id="Ssh"><listBox refId="Ssh">Directives :</listBox></presentation>
+      <presentation id="FirewallRules"><listBox refId="FirewallRules">Règles :</listBox></presentation>
+      <presentation id="Messages"><multiTextBox refId="issue">Avant la connexion :</multiTextBox><multiTextBox refId="motd">Après la connexion :</multiTextBox></presentation>
+      <presentation id="Updates"><dropdownList refId="Mode" noSort="true" defaultItem="1">Mises à jour :</dropdownList><textBox refId="Time"><label>Heure (HH:MM) :</label><defaultValue>03:00</defaultValue></textBox><checkBox refId="Reboot">Redémarrer automatiquement si nécessaire (30 min après)</checkBox></presentation>
+      <presentation id="Time"><textBox refId="NtpServers"><label>Serveurs (facultatif, séparés par des espaces) :</label></textBox></presentation>
+      <presentation id="Files"><listBox refId="Files">Fichiers :</listBox></presentation>
+      <presentation id="SoftwareInstall"><listBox refId="SoftwareInstall">Paquets :</listBox></presentation>
+      <presentation id="SoftwareRemove"><listBox refId="SoftwareRemove">Paquets :</listBox></presentation>
+      <presentation id="Flatpak"><listBox refId="Flatpak">Applications :</listBox></presentation>
+      <presentation id="StartupScripts"><listBox refId="StartupScripts">Scripts :</listBox></presentation>
+      <presentation id="DailyScripts"><listBox refId="DailyScripts">Scripts :</listBox></presentation>
+      <presentation id="LogonScripts"><listBox refId="LogonScripts">Scripts :</listBox></presentation>
+    </presentationTable>
+  </resources>
+</policyDefinitionResources>

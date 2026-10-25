@@ -1,0 +1,26 @@
+# Paquet Arch Linux (et dérivées : Manjaro, EndeavourOS…) : makepkg -si
+pkgname=linux-gpo
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Stratégies de groupe Active Directory (GPO) pour Linux"
+arch=('any')
+url="https://github.com/jonathan-pp/linux-gpo-agent"
+license=('GPL-3.0-or-later')
+depends=('python' 'krb5' 'openldap' 'cyrus-sasl-gssapi' 'smbclient')
+optdepends=('sudo: règles sudo des GPO' 'dconf: verrouillage de GNOME' 'flatpak: applications Flatpak des GPO')
+backup=('etc/linux-gpo/agent.conf')
+install=linux-gpo.install
+source=()
+
+package() {
+  local r="$startdir/../.."
+  install -d "$pkgdir/usr/lib/linux-gpo" "$pkgdir/etc/linux-gpo"
+  cp -r "$r/linux_gpo" "$pkgdir/usr/lib/linux-gpo/"
+  find "$pkgdir" -name __pycache__ -prune -exec rm -rf {} +
+  install -Dm755 "$r/packaging/bin/linux-gpo" "$pkgdir/usr/bin/linux-gpo"
+  install -Dm755 "$r/packaging/bin/acces" "$pkgdir/usr/lib/linux-gpo/acces"
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/system" "$r"/packaging/systemd/linux-gpo.service "$r"/packaging/systemd/linux-gpo.timer
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/user" "$r"/packaging/systemd/linux-gpo-utilisateur*
+  install -Dm644 "$r/packaging/agent.conf" "$pkgdir/etc/linux-gpo/agent.conf"
+  install -Dm644 "$r/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

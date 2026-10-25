@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 314" font-family="DejaVu Sans Mono, Consolas, monospace" font-size="14">
+<rect width="900" height="314" rx="10" fill="#0f172a"/>
+<circle cx="22" cy="18" r="6" fill="#ef4444"/><circle cx="42" cy="18" r="6" fill="#eab308"/><circle cx="62" cy="18" r="6" fill="#22c55e"/>
+<text x="450" y="23" text-anchor="middle" fill="#94a3b8" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13">zz-debian — poste Debian 13 joint avec sssd</text>
+<text x="18" y="56" fill="#93c5fd" xml:space="preserve">$ sudo linux-gpo diagnostic</text>
+<text x="18" y="77" fill="#e2e8f0" xml:space="preserve">linux-gpo 0.1.0 — debian</text>
+<text x="18" y="98" fill="#86efac" xml:space="preserve">  ok      domaine : exemple.local (jonction : sssd)</text>
+<text x="18" y="119" fill="#86efac" xml:space="preserve">  ok      keytab /etc/krb5.keytab, compte ZZ-DEBIAN$</text>
+<text x="18" y="140" fill="#86efac" xml:space="preserve">  ok      outil kinit</text>
+<text x="18" y="161" fill="#86efac" xml:space="preserve">  ok      outil ldapsearch</text>
+<text x="18" y="182" fill="#86efac" xml:space="preserve">  ok      outil smbclient</text>
+<text x="18" y="203" fill="#86efac" xml:space="preserve">  ok      ticket Kerberos du compte machine</text>
+<text x="18" y="224" fill="#86efac" xml:space="preserve">  ok      contrôleur : dc01.exemple.local</text>
+<text x="18" y="245" fill="#86efac" xml:space="preserve">  ok      compte dans l’annuaire : CN=ZZ-DEBIAN,OU=zz-linux,DC=exemple,DC=local</text>
+<text x="18" y="266" fill="#86efac" xml:space="preserve">  ok      2 GPO applicable(s) : Default Domain Policy, zz-linux-gpo</text>
+<text x="18" y="287" fill="#86efac" xml:space="preserve">  ok      lecture de SYSVOL (Default Domain Policy)</text>
+</svg>

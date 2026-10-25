@@ -1,0 +1,658 @@
+{
+ "categories": [
+  [
+   "Linux",
+   null,
+   "Linux (linux-gpo)",
+   "Linux (linux-gpo)"
+  ],
+  [
+   "Bureau",
+   "Linux",
+   "Bureau",
+   "Desktop"
+  ],
+  [
+   "Droits",
+   "Linux",
+   "Droits des utilisateurs",
+   "User rights"
+  ],
+  [
+   "Securite",
+   "Linux",
+   "Sécurité",
+   "Security"
+  ],
+  [
+   "Systeme",
+   "Linux",
+   "Système",
+   "System"
+  ],
+  [
+   "Logiciels",
+   "Linux",
+   "Logiciels et scripts",
+   "Software and scripts"
+  ]
+ ],
+ "parametres": [
+  {
+   "id": "DisableCommandLine",
+   "classe": "Both",
+   "cat": "Bureau",
+   "cle": "Software\\Policies\\LinuxGPO\\Desktop",
+   "fr": "Interdire le terminal et la commande « Exécuter »",
+   "en": "Prohibit the terminal and the Run command",
+   "aide_fr": "Activé : les utilisateurs ne peuvent plus ouvrir de terminal ni lancer de commande (Alt+F2, KRunner). GNOME, Cinnamon, MATE, KDE Plasma. Équivalent Linux de « Désactiver l’accès à l’invite de commandes » (barrière d’interface, pas une sécurité absolue).",
+   "aide_en": "Enabled: users can no longer open a terminal or run commands (Alt+F2, KRunner). GNOME, Cinnamon, MATE, KDE Plasma.",
+   "valeur": null,
+   "type": "bool",
+   "elements": []
+  },
+  {
+   "id": "DisablePrinting",
+   "classe": "Machine",
+   "cat": "Bureau",
+   "cle": "Software\\Policies\\LinuxGPO\\Desktop",
+   "fr": "Interdire l’impression",
+   "en": "Prohibit printing",
+   "aide_fr": "Activé : impression et configuration de l’impression interdites (GNOME, MATE, KDE Plasma).",
+   "aide_en": "Enabled: printing and print setup are prohibited (GNOME, MATE, KDE Plasma).",
+   "valeur": null,
+   "type": "bool",
+   "elements": []
+  },
+  {
+   "id": "DisableSaveToDisk",
+   "classe": "Machine",
+   "cat": "Bureau",
+   "cle": "Software\\Policies\\LinuxGPO\\Desktop",
+   "fr": "Interdire l’enregistrement de fichiers",
+   "en": "Prohibit saving files",
+   "aide_fr": "Activé : les applications qui respectent ce réglage n’enregistrent plus de fichiers sur le disque (GNOME, MATE, KDE Plasma).",
+   "aide_en": "Enabled: applications that honour this setting can no longer save files to disk (GNOME, MATE, KDE Plasma).",
+   "valeur": null,
+   "type": "bool",
+   "elements": []
+  },
+  {
+   "id": "DisableLogout",
+   "classe": "Machine",
+   "cat": "Bureau",
+   "cle": "Software\\Policies\\LinuxGPO\\Desktop",
+   "fr": "Interdire la déconnexion",
+   "en": "Prohibit log out",
+   "aide_fr": "Activé : le bouton de déconnexion disparaît (poste en libre-service, kiosque).",
+   "aide_en": "Enabled: the log out action is removed (kiosk).",
+   "valeur": null,
+   "type": "bool",
+   "elements": []
+  },
+  {
+   "id": "DisableUserSwitching",
+   "classe": "Machine",
+   "cat": "Bureau",
+   "cle": "Software\\Policies\\LinuxGPO\\Desktop",
+   "fr": "Interdire le changement d’utilisateur",
+   "en": "Prohibit user switching",
+   "aide_fr": "Activé : un seul utilisateur à la fois sur le poste.",
+   "aide_en": "Enabled: only one user session at a time.",
+   "valeur": null,
+   "type": "bool",
+   "elements": []
+  },
+  {
+   "id": "LockDelay",
+   "classe": "Both",
+   "cat": "Bureau",
+   "cle": "Software\\Policies\\LinuxGPO\\Desktop",
+   "fr": "Verrouiller l’écran après une période d’inactivité",
+   "en": "Lock the screen after inactivity",
+   "aide_fr": "Activé : l’écran se verrouille après le délai indiqué (secondes). Côté ordinateur, le réglage est imposé ; côté utilisateur, il est remis à chaque session. Repris aussi de la stratégie Windows « Ouverture de session interactive : limite d’inactivité ».",
+   "aide_en": "Enabled: the screen locks after the given delay (seconds).",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "LockDelay",
+     "type": "nombre",
+     "fr": "Délai (secondes) :",
+     "en": "Delay (seconds):",
+     "valeur": "LockDelay",
+     "cle": null,
+     "min": 60,
+     "max": 86400,
+     "defaut": 600
+    }
+   ]
+  },
+  {
+   "id": "Wallpaper",
+   "classe": "Both",
+   "cat": "Bureau",
+   "cle": "Software\\Policies\\LinuxGPO\\Desktop",
+   "fr": "Image de fond du bureau",
+   "en": "Desktop wallpaper",
+   "aide_fr": "Activé : impose l’image de fond. Côté ordinateur : chemin d’une image présente sur le poste (/usr/share/…, ou déployée par « Fichiers à copier ») ; côté utilisateur, un chemin réseau \\\\serveur\\partage\\image.jpg est aussi accepté. GNOME, Cinnamon, MATE (KDE Plasma : côté utilisateur seulement).",
+   "aide_en": "Enabled: sets the desktop wallpaper (local path; a UNC path is accepted in User Configuration).",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "Wallpaper",
+     "type": "texte",
+     "fr": "Chemin de l’image :",
+     "en": "Image path:",
+     "valeur": "Wallpaper",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "HideUserList",
+   "classe": "Machine",
+   "cat": "Bureau",
+   "cle": "Software\\Policies\\LinuxGPO\\Desktop",
+   "fr": "Écran de connexion : ne pas afficher la liste des utilisateurs",
+   "en": "Login screen: do not show the user list",
+   "aide_fr": "Activé : l’utilisateur saisit son nom (GDM, SDDM, LightDM). Repris aussi de « Ne pas afficher le dernier nom d’utilisateur ».",
+   "aide_en": "Enabled: users type their user name (GDM, SDDM, LightDM).",
+   "valeur": null,
+   "type": "bool",
+   "elements": []
+  },
+  {
+   "id": "LoginBanner",
+   "classe": "Machine",
+   "cat": "Bureau",
+   "cle": "Software\\Policies\\LinuxGPO\\Desktop",
+   "fr": "Écran de connexion : message affiché",
+   "en": "Login screen: banner message",
+   "aide_fr": "Activé : message affiché sur l’écran de connexion GNOME (GDM). Le message légal de Windows est aussi repris.",
+   "aide_en": "Enabled: message shown on the GNOME login screen (GDM).",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "LoginBanner",
+     "type": "multi",
+     "fr": "Message :",
+     "en": "Message:",
+     "valeur": "LoginBanner",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "DenyRemovableStorage",
+   "classe": "Machine",
+   "cat": "Droits",
+   "cle": "Software\\Policies\\LinuxGPO\\Devices",
+   "fr": "Supports amovibles (clés USB, disques externes)",
+   "en": "Removable storage (USB keys, external drives)",
+   "aide_fr": "Activé : les utilisateurs non administrateurs ne peuvent plus monter de support amovible ; avec « bloquer aussi le pilote », le stockage USB est désactivé pour tous. La stratégie Windows « Toutes les classes de stockage amovible : refuser tout accès » a le même effet.",
+   "aide_en": "Enabled: non-administrators can no longer mount removable media; optionally the USB storage driver is blocked.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "DenyRemovableStorage",
+     "type": "choix",
+     "fr": "Restriction :",
+     "en": "Restriction:",
+     "valeur": "DenyRemovableStorage",
+     "cle": null,
+     "defaut": 0,
+     "choix": [
+      [
+       1,
+       "Interdire le montage",
+       "Prohibit mounting"
+      ],
+      [
+       2,
+       "Interdire le montage et bloquer le pilote USB",
+       "Prohibit mounting and block the USB driver"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "DenyPowerOff",
+   "classe": "Machine",
+   "cat": "Droits",
+   "cle": "Software\\Policies\\LinuxGPO\\Permissions",
+   "fr": "Interdire l’arrêt et le redémarrage",
+   "en": "Prohibit shutdown and restart",
+   "aide_fr": "Activé : seuls les administrateurs du poste peuvent arrêter, redémarrer ou mettre en veille.",
+   "aide_en": "Enabled: only local administrators can shut down, restart or suspend.",
+   "valeur": null,
+   "type": "bool",
+   "elements": []
+  },
+  {
+   "id": "DenySoftwareInstall",
+   "classe": "Machine",
+   "cat": "Droits",
+   "cle": "Software\\Policies\\LinuxGPO\\Permissions",
+   "fr": "Interdire l’installation de logiciels",
+   "en": "Prohibit software installation",
+   "aide_fr": "Activé : installation de logiciels interdite aux utilisateurs (Logithèque, Discover, Flatpak, Snap).",
+   "aide_en": "Enabled: users cannot install software (GNOME Software, Discover, Flatpak, Snap).",
+   "valeur": null,
+   "type": "bool",
+   "elements": []
+  },
+  {
+   "id": "DenyNetworkConfig",
+   "classe": "Machine",
+   "cat": "Droits",
+   "cle": "Software\\Policies\\LinuxGPO\\Permissions",
+   "fr": "Interdire la modification des connexions réseau",
+   "en": "Prohibit changing network connections",
+   "aide_fr": "Activé : les connexions NetworkManager ne peuvent plus être modifiées par les utilisateurs.",
+   "aide_en": "Enabled: users cannot change NetworkManager connections.",
+   "valeur": null,
+   "type": "bool",
+   "elements": []
+  },
+  {
+   "id": "AdminGroups",
+   "classe": "Machine",
+   "cat": "Droits",
+   "cle": "Software\\Policies\\LinuxGPO\\Permissions",
+   "fr": "Groupes administrateurs du poste",
+   "en": "Local administrator groups",
+   "aide_fr": "Groupes non concernés par les interdictions ci-dessus, séparés par « ; » (ex. sudo;wheel;DOMAINE\\Support). Par défaut : sudo, wheel, admin et les Admins du domaine.",
+   "aide_en": "Groups exempted from the restrictions above, separated by “;”.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "AdminGroups",
+     "type": "texte",
+     "fr": "Groupes :",
+     "en": "Groups:",
+     "valeur": "AdminGroups",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "SudoRules",
+   "classe": "Machine",
+   "cat": "Securite",
+   "cle": "Software\\Policies\\LinuxGPO\\Sudo\\Rules",
+   "fr": "Droits sudo",
+   "en": "Sudo rights",
+   "aide_fr": "Une règle sudoers par ligne ; nommez les comptes du domaine DOMAINE\\nom (groupe : %DOMAINE\\groupe), échappez les espaces (%DOMAINE\\Admins\\ du\\ domaine). Exemple : %EXEMPLE\\Support ALL=(ALL) ALL. Les noms sont adaptés au poste (sssd ou winbind) et chaque règle est vérifiée par visudo.",
+   "aide_en": "One sudoers rule per line; name domain accounts DOMAIN\\name.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "SudoRules",
+     "type": "liste",
+     "fr": "Règles :",
+     "en": "Rules:",
+     "valeur": "SudoRules",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "AccessAllow",
+   "classe": "Machine",
+   "cat": "Securite",
+   "cle": "Software\\Policies\\LinuxGPO\\Access\\Allow",
+   "fr": "Ouverture de session : comptes autorisés",
+   "en": "Logon: allowed accounts",
+   "aide_fr": "Activé : seuls ces utilisateurs ou groupes du domaine (DOMAINE\\nom) peuvent ouvrir une session. root et les comptes locaux ne sont jamais bloqués.",
+   "aide_en": "Enabled: only these domain users or groups (DOMAIN\\name) can log on.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "AccessAllow",
+     "type": "liste",
+     "fr": "Comptes :",
+     "en": "Accounts:",
+     "valeur": "AccessAllow",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "AccessDeny",
+   "classe": "Machine",
+   "cat": "Securite",
+   "cle": "Software\\Policies\\LinuxGPO\\Access\\Deny",
+   "fr": "Ouverture de session : comptes refusés",
+   "en": "Logon: denied accounts",
+   "aide_fr": "Activé : ces utilisateurs ou groupes du domaine ne peuvent pas ouvrir de session.",
+   "aide_en": "Enabled: these accounts cannot log on.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "AccessDeny",
+     "type": "liste",
+     "fr": "Comptes :",
+     "en": "Accounts:",
+     "valeur": "AccessDeny",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "Ssh",
+   "classe": "Machine",
+   "cat": "Securite",
+   "cle": "Software\\Policies\\LinuxGPO\\SSH",
+   "fr": "Serveur SSH",
+   "en": "SSH server",
+   "aide_fr": "Directives de sshd (nom → valeur), par exemple PermitRootLogin → no, PasswordAuthentication → no, AllowGroups → … Vérifiées par « sshd -t » avant d’être appliquées.",
+   "aide_en": "sshd directives (name → value), checked with “sshd -t”.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "Ssh",
+     "type": "paires",
+     "fr": "Directives :",
+     "en": "Directives:",
+     "valeur": "Ssh",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "FirewallRules",
+   "classe": "Machine",
+   "cat": "Securite",
+   "cle": "Software\\Policies\\LinuxGPO\\Firewall\\Rules",
+   "fr": "Pare-feu : règles",
+   "en": "Firewall: rules",
+   "aide_fr": "Une règle par ligne : « action;port/protocole ou service;source », action = accept, reject ou drop. Exemples : accept;22/tcp;10.0.0.0/8 — drop;telnet; — accept;8000-8080/tcp;. Appliquées avec firewalld, ufw ou nftables selon le poste.",
+   "aide_en": "One rule per line: “action;port/protocol or service;source”.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "FirewallRules",
+     "type": "liste",
+     "fr": "Règles :",
+     "en": "Rules:",
+     "valeur": "FirewallRules",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "Messages",
+   "classe": "Machine",
+   "cat": "Systeme",
+   "cle": "Software\\Policies\\LinuxGPO\\Messages",
+   "fr": "Messages de connexion",
+   "en": "Logon messages",
+   "aide_fr": "Message affiché avant la connexion en console et SSH (/etc/issue) et après la connexion (/etc/motd).",
+   "aide_en": "Message shown before logon (/etc/issue) and after logon (/etc/motd).",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "issue",
+     "type": "multi",
+     "fr": "Avant la connexion :",
+     "en": "Before logon:",
+     "valeur": "issue",
+     "cle": null
+    },
+    {
+     "id": "motd",
+     "type": "multi",
+     "fr": "Après la connexion :",
+     "en": "After logon:",
+     "valeur": "motd",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "Updates",
+   "classe": "Machine",
+   "cat": "Systeme",
+   "cle": "Software\\Policies\\LinuxGPO\\Updates",
+   "fr": "Mises à jour automatiques",
+   "en": "Automatic updates",
+   "aide_fr": "Installe automatiquement les mises à jour (Debian/Ubuntu : unattended-upgrades ; Fedora : dnf ; Arch : pacman -Syu ; openSUSE : zypper). « Aucune » arrête les mises à jour automatiques ; Désactivé ou Non configuré : le réglage du poste n’est pas modifié.",
+   "aide_en": "Installs updates automatically.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "Mode",
+     "type": "choix",
+     "fr": "Mises à jour :",
+     "en": "Updates:",
+     "valeur": "Mode",
+     "cle": null,
+     "defaut": 1,
+     "choix": [
+      [
+       0,
+       "Aucune",
+       "None"
+      ],
+      [
+       1,
+       "Correctifs de sécurité",
+       "Security fixes"
+      ],
+      [
+       2,
+       "Toutes",
+       "All"
+      ]
+     ]
+    },
+    {
+     "id": "Time",
+     "type": "texte",
+     "fr": "Heure (HH:MM) :",
+     "en": "Time (HH:MM):",
+     "valeur": "Time",
+     "cle": null,
+     "defaut": "03:00"
+    },
+    {
+     "id": "Reboot",
+     "type": "case",
+     "fr": "Redémarrer automatiquement si nécessaire (30 min après)",
+     "en": "Restart automatically when required",
+     "valeur": "Reboot",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "Time",
+   "classe": "Machine",
+   "cat": "Systeme",
+   "cle": "Software\\Policies\\LinuxGPO\\Time",
+   "fr": "Synchroniser l’heure sur le domaine",
+   "en": "Synchronise time with the domain",
+   "aide_fr": "Activé : l’heure est prise sur les contrôleurs du domaine (ou les serveurs indiqués). Kerberos exige moins de 5 minutes d’écart.",
+   "aide_en": "Enabled: time is synchronised with the domain controllers (or the given servers).",
+   "valeur": "UseDomainTime",
+   "type": "elements",
+   "elements": [
+    {
+     "id": "NtpServers",
+     "type": "texte",
+     "fr": "Serveurs (facultatif, séparés par des espaces) :",
+     "en": "Servers (optional, space separated):",
+     "valeur": "NtpServers",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "Files",
+   "classe": "Machine",
+   "cat": "Systeme",
+   "cle": "Software\\Policies\\LinuxGPO\\Files",
+   "fr": "Fichiers à copier sur le poste",
+   "en": "Files to copy to the computer",
+   "aide_fr": "Nom = chemin sur le poste (/etc/…), valeur = « \\\\serveur\\partage\\fichier;droits;propriétaire:groupe » (droits et propriétaire facultatifs, par défaut 0644 root:root). Le fichier est lu avec le compte de l’ordinateur (donnez-lui la lecture).",
+   "aide_en": "Name = path on the computer, value = “\\\\server\\share\\file;mode;owner:group”.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "Files",
+     "type": "paires",
+     "fr": "Fichiers :",
+     "en": "Files:",
+     "valeur": "Files",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "SoftwareInstall",
+   "classe": "Machine",
+   "cat": "Logiciels",
+   "cle": "Software\\Policies\\LinuxGPO\\Software\\Install",
+   "fr": "Paquets à installer",
+   "en": "Packages to install",
+   "aide_fr": "Un paquet par ligne : « nom », ou un nom par gestionnaire : « apt:libreoffice pacman:libreoffice-fresh dnf:libreoffice ».",
+   "aide_en": "One package per line, optionally per package manager.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "SoftwareInstall",
+     "type": "liste",
+     "fr": "Paquets :",
+     "en": "Packages:",
+     "valeur": "SoftwareInstall",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "SoftwareRemove",
+   "classe": "Machine",
+   "cat": "Logiciels",
+   "cle": "Software\\Policies\\LinuxGPO\\Software\\Remove",
+   "fr": "Paquets à désinstaller",
+   "en": "Packages to remove",
+   "aide_fr": "Un paquet par ligne (même format).",
+   "aide_en": "One package per line.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "SoftwareRemove",
+     "type": "liste",
+     "fr": "Paquets :",
+     "en": "Packages:",
+     "valeur": "SoftwareRemove",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "Flatpak",
+   "classe": "Machine",
+   "cat": "Logiciels",
+   "cle": "Software\\Policies\\LinuxGPO\\Software\\Flatpak",
+   "fr": "Applications Flatpak à installer",
+   "en": "Flatpak applications to install",
+   "aide_fr": "Identifiants Flathub, un par ligne (ex. org.libreoffice.LibreOffice, org.mozilla.Thunderbird).",
+   "aide_en": "Flathub application IDs.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "Flatpak",
+     "type": "liste",
+     "fr": "Applications :",
+     "en": "Applications:",
+     "valeur": "Flatpak",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "StartupScripts",
+   "classe": "Machine",
+   "cat": "Logiciels",
+   "cle": "Software\\Policies\\LinuxGPO\\Scripts\\Startup",
+   "fr": "Scripts de démarrage",
+   "en": "Startup scripts",
+   "aide_fr": "Nom = libellé, valeur = commande lancée en root à chaque démarrage.",
+   "aide_en": "Name = label, value = command run as root at startup.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "StartupScripts",
+     "type": "paires",
+     "fr": "Scripts :",
+     "en": "Scripts:",
+     "valeur": "StartupScripts",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "DailyScripts",
+   "classe": "Machine",
+   "cat": "Logiciels",
+   "cle": "Software\\Policies\\LinuxGPO\\Scripts\\Daily",
+   "fr": "Scripts quotidiens",
+   "en": "Daily scripts",
+   "aide_fr": "Nom = libellé, valeur = commande lancée en root une fois par jour.",
+   "aide_en": "Name = label, value = command run daily as root.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "DailyScripts",
+     "type": "paires",
+     "fr": "Scripts :",
+     "en": "Scripts:",
+     "valeur": "DailyScripts",
+     "cle": null
+    }
+   ]
+  },
+  {
+   "id": "LogonScripts",
+   "classe": "User",
+   "cat": "Logiciels",
+   "cle": "Software\\Policies\\LinuxGPO\\Scripts\\Logon",
+   "fr": "Scripts d’ouverture de session",
+   "en": "Logon scripts",
+   "aide_fr": "Nom = libellé, valeur = commande lancée avec les droits de l’utilisateur à l’ouverture de session.",
+   "aide_en": "Name = label, value = command run as the user at logon.",
+   "valeur": null,
+   "type": "elements",
+   "elements": [
+    {
+     "id": "LogonScripts",
+     "type": "paires",
+     "fr": "Scripts :",
+     "en": "Scripts:",
+     "valeur": "LogonScripts",
+     "cle": null
+    }
+   ]
+  }
+ ]
+}

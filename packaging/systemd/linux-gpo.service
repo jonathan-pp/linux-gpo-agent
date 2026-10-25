@@ -1,0 +1,16 @@
+[Unit]
+Description=Stratégies de groupe (GPO) de l'ordinateur
+Documentation=https://github.com/jonathan-pp/linux-gpo-agent
+Wants=network-online.target
+After=network-online.target nss-lookup.target sssd.service winbind.service time-sync.target
+# appliquées avant l'écran de connexion au démarrage, comme sous Windows
+Before=display-manager.service systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/linux-gpo appliquer
+TimeoutStartSec=10min
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

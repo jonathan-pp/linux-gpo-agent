@@ -1,0 +1,6 @@
+#!/usr/bin/python3 -I
+# Appelé par PAM (pam_exec) : contrôle d'ouverture de session des stratégies de groupe.
+import sys
+sys.path.insert(0, '/usr/lib/linux-gpo')
+from linux_gpo.acces_pam import main
+sys.exit(main())

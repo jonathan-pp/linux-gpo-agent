@@ -1,0 +1,6 @@
+[Unit]
+Description=Actualisation des stratégies de groupe de l'utilisateur
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/linux-gpo utilisateur

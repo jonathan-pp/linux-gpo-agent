@@ -1,0 +1,11 @@
+[Unit]
+Description=Stratégies de groupe (GPO) de l'utilisateur, à l'ouverture de session
+After=graphical-session-pre.target dbus.socket
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/linux-gpo utilisateur --ouverture
+TimeoutStartSec=5min
+
+[Install]
+WantedBy=default.target
