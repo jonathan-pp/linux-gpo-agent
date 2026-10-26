@@ -6,6 +6,7 @@
     linux-gpo diagnostic                        vérifie la jonction, Kerberos, LDAP, SYSVOL et les outils
     linux-gpo retirer-tout                      retire tout ce que l’agent a posé (remet les fichiers d’origine)
     linux-gpo hors-ligne DOSSIER [--simuler]    applique des GPO copiées dans DOSSIER (tests)
+    linux-gpo maj [--force]                     met l’agent à jour (Console du domaine, sinon GitHub)
 """
 from __future__ import annotations
 
@@ -245,6 +246,11 @@ def redemarrer_si_besoin(args) -> int:
     return 0
 
 
+def maj(args) -> int:
+    from .maj import mettre_a_jour
+    return mettre_a_jour(configuration.charger(), args.force)
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog='linux-gpo', description='Stratégies de groupe Active Directory pour Linux')
     p.add_argument('-v', '--verbeux', action='store_true')
@@ -264,6 +270,8 @@ def main(argv=None) -> int:
     s.add_parser('diagnostic', help='vérifie la configuration du poste')
     s.add_parser('retirer-tout', help='retire tous les réglages posés par l’agent')
     s.add_parser('redemarrer-si-besoin')
+    m = s.add_parser('maj', help='met l’agent à jour')
+    m.add_argument('--force', action='store_true', help='réinstalle même si l’agent est déjà à jour')
     h = s.add_parser('hors-ligne', help='applique des GPO copiées dans un dossier (tests)')
     h.add_argument('dossier')
     h.add_argument('--simuler', action='store_true')
@@ -276,13 +284,13 @@ def main(argv=None) -> int:
     if cmd == 'appliquer' and not hasattr(args, 'simuler'):
         args = p.parse_args(['appliquer'] + (argv or sys.argv[1:]))
     actions = {'appliquer': machine, 'utilisateur': utilisateur, 'resultat': resultat, 'diagnostic': diagnostic,
-               'retirer-tout': retirer_tout, 'redemarrer-si-besoin': redemarrer_si_besoin, 'hors-ligne': hors_ligne}
-    besoin_root = cmd in ('appliquer', 'retirer-tout', 'redemarrer-si-besoin') and not getattr(args, 'simuler', False)
+               'retirer-tout': retirer_tout, 'redemarrer-si-besoin': redemarrer_si_besoin, 'hors-ligne': hors_ligne, 'maj': maj}
+    besoin_root = cmd in ('appliquer', 'retirer-tout', 'redemarrer-si-besoin', 'maj') and not getattr(args, 'simuler', False)
     if besoin_root and os.geteuid() != 0:
         print('linux-gpo : à lancer en root', file=sys.stderr)
         return 2
     verrou = None
-    if besoin_root:
+    if besoin_root and cmd != 'maj':  # maj : install.sh relance lui-même un passage, qui prend le verrou
         verrou = open(VERROU, 'w')
         try:
             fcntl.flock(verrou, fcntl.LOCK_EX | fcntl.LOCK_NB)

@@ -260,3 +260,34 @@ class Raccourcis(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Maj(unittest.TestCase):
+    def test_sources_et_installation(self):
+        import io
+        import tarfile
+        from unittest import mock
+        from linux_gpo import maj
+
+        c = Conf(domaine='exemple.local', serveur='dc01.exemple.local')
+        self.assertEqual(maj.sources(c), ['https://dc01.exemple.local:8443/linux/linux-gpo.tar.gz', maj.GITHUB])
+        self.assertEqual(maj.sources(Conf(domaine='x', options={'source_maj': 'github'})), [maj.GITHUB])
+
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        trace = os.path.join(d, 'installe')
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode='w:gz') as t:
+            for nom, contenu in (('agent/linux_gpo/__init__.py', b''), ('agent/install.sh', f'echo ok >> {trace}\n'.encode())):
+                i = tarfile.TarInfo(nom)
+                i.size = len(contenu)
+                t.addfile(i, io.BytesIO(contenu))
+        c.etat = d
+        with mock.patch.object(maj, 'telecharger', return_value=buf.getvalue()):
+            maj.mettre_a_jour(c)
+            maj.mettre_a_jour(c)  # même archive : rien à faire
+        with open(trace) as fh:
+            self.assertEqual(fh.read(), 'ok\n')
+        with mock.patch.object(maj, 'telecharger', return_value=b'pas une archive'), \
+                self.assertRaises(systeme.ErreurAgent):
+            maj.mettre_a_jour(c, True)
