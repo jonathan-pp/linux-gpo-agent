@@ -21,7 +21,7 @@ package() {
   install -Dm755 "$r/packaging/bin/gpupdate" "$pkgdir/usr/bin/gpupdate"
   install -Dm644 "$r/packaging/polkit/50-linux-gpo.rules" "$pkgdir/usr/share/polkit-1/rules.d/50-linux-gpo.rules"
   install -Dm755 "$r/packaging/bin/acces" "$pkgdir/usr/lib/linux-gpo/acces"
-  install -Dm644 -t "$pkgdir/usr/lib/systemd/system" "$r"/packaging/systemd/linux-gpo.service "$r"/packaging/systemd/linux-gpo.timer "$r"/packaging/systemd/linux-gpo-applications.service
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/system" "$r"/packaging/systemd/linux-gpo.service "$r"/packaging/systemd/linux-gpo.timer "$r"/packaging/systemd/linux-gpo-applications.service "$r"/packaging/systemd/linux-gpo-applications.path
   install -Dm644 -t "$pkgdir/usr/lib/systemd/user" "$r"/packaging/systemd/linux-gpo-utilisateur*
   install -Dm644 "$r/packaging/agent.conf" "$pkgdir/etc/linux-gpo/agent.conf"
   install -Dm644 "$r/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"

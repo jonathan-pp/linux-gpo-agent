@@ -290,16 +290,21 @@ class Maj(unittest.TestCase):
 
 
 class ProfilBureau(unittest.TestCase):
-    PROFIL = {'version': 1, 'nom': 'Bureau RH',
-              'apps': [{'id': 'firefox', 'nom': 'Firefox', 'type': 'appli', 'flatpak': 'org.mozilla.firefox', 'lanceurs': ['firefox']},
-                       {'id': 'vlc', 'nom': 'VLC', 'type': 'appli', 'flatpak': 'org.videolan.VLC'},
-                       {'id': 'intranet', 'nom': 'Intranet', 'type': 'web', 'url': 'https://intranet.exemple.local'},
-                       {'id': 'rh', 'nom': 'Partage RH', 'type': 'partage', 'chemin': '\\\\dc01\\RH'},
+    FX = {'methode': 'flatpak', 'paquet': 'org.mozilla.firefox'}
+    PROFIL = {'version': 2, 'nom': 'Bureau RH',
+              'apps': [{'id': 'std-firefox', 'nom': 'Firefox', 'type': 'appli', 'winget': 'Mozilla.Firefox',
+                        'installateurs': [{'methode': 'native', 'paquet': 'firefox', 'distros': ['ubuntu', 'arch']},
+                                          {'methode': 'native', 'paquet': 'firefox-esr', 'distros': ['debian']}, FX]},
+                       {'id': 'std-vlc', 'nom': 'VLC', 'type': 'appli',
+                        'installateurs': [{'methode': 'native', 'paquet': 'vlc', 'distros': ['debian', 'ubuntu', 'arch']},
+                                          {'methode': 'flatpak', 'paquet': 'org.videolan.VLC'}]},
+                       {'id': 'std-7zip', 'nom': '7-Zip', 'type': 'appli', 'installateurs': [{'methode': 'snap', 'paquet': '7zip'}]},
+                       {'id': 'web-intranet', 'nom': 'Intranet', 'type': 'web', 'url': 'https://intranet.exemple.local'},
+                       {'id': 'partage-rh', 'nom': 'Partage RH', 'type': 'partage', 'chemin': '\\\\dc01\\RH'},
                        {'id': '../x', 'nom': 'Mauvais', 'type': 'web', 'url': 'https://x'},
-                       {'id': 'pirate', 'nom': 'Pirate', 'type': 'appli', 'flatpak': 'rm -rf /'}],
-              'bureau': [{'app': 'intranet', 'col': 1, 'lig': 0}, {'app': 'firefox', 'col': 0, 'lig': 0},
-                         {'app': 'rh', 'col': 0, 'lig': 1}, {'app': 'vlc', 'col': 0, 'lig': 2}, {'app': 'inconnue'}],
-              'barre': ['firefox', 'vlc', 'intranet'], 'fond': '../../etc/shadow'}
+                       {'id': 'pirate', 'nom': 'Pirate', 'type': 'appli', 'installateurs': [{'methode': 'native', 'paquet': 'x; rm -rf /'}]}],
+              'bureau': ['std-firefox', 'partage-rh', 'std-vlc', 'web-intranet', 'inconnue'],
+              'barre': ['std-firefox', 'std-vlc', 'web-intranet'], 'installer': ['std-7zip'], 'fond': '../../etc/shadow'}
 
     def setUp(self):
         from linux_gpo.ext import profil
@@ -310,15 +315,32 @@ class ProfilBureau(unittest.TestCase):
         with open(self.f, 'w', encoding='utf-8') as fh:
             json.dump(self.PROFIL, fh)
 
-    def test_lecture(self):
+    def test_lecture_et_choix_de_l_installateur(self):
         p = self.p.charger(self.f)
-        self.assertEqual(sorted(p['apps']), ['firefox', 'intranet', 'pirate', 'rh', 'vlc'])
-        self.assertEqual(p['apps']['pirate']['flatpak'], '')     # identifiant Flatpak invalide : ignoré
-        self.assertEqual(p['fond'], '')                          # chemin hors du dossier du profil : refusé
-        self.assertEqual(p['barre'], ['firefox', 'vlc'])         # seules des applications s’épinglent
-        f = self.p.fusionner([p])
-        self.assertEqual(f['bureau'], ['firefox', 'rh', 'vlc', 'intranet'])  # colonne par colonne
+        self.assertEqual(sorted(p['apps']), ['partage-rh', 'pirate', 'std-7zip', 'std-firefox', 'std-vlc', 'web-intranet'])
+        self.assertEqual(p['apps']['pirate']['installateurs'], [])   # nom de paquet invalide : ignoré
+        self.assertEqual(p['fond'], '')                               # chemin hors du dossier du profil : refusé
+        self.assertEqual(p['barre'], ['std-firefox', 'std-vlc'])      # seules des applications s’épinglent
+        self.assertEqual(p['bureau'], ['std-firefox', 'partage-rh', 'std-vlc', 'web-intranet'])
+        self.assertEqual(self.p.utiles(p), ['std-firefox', 'std-vlc', 'std-7zip'])
+        ff = p['apps']['std-firefox']
+        self.assertEqual(self.p.choisir(ff, 'debian', 'apt')['paquet'], 'firefox-esr')   # paquet de la distribution d’abord
+        self.assertEqual(self.p.choisir(ff, 'ubuntu', 'apt')['paquet'], 'firefox')
+        self.assertEqual(self.p.choisir(ff, None, 'dnf')['methode'], 'flatpak')          # distribution inconnue : Flatpak
+        self.assertEqual(self.p.choisir(ff, 'debian', None)['methode'], 'flatpak')       # pas de gestionnaire de paquets
+        self.assertIsNone(self.p.choisir(p['apps']['std-7zip'], 'arch', 'pacman'))        # Snap : pas sous Arch
         self.assertEqual(self.p.unc_vers_smb('\\\\dc01\\RH\\Docs', 'exemple.local'), 'smb://dc01.exemple.local/RH/Docs')
+
+    def test_application_deja_la_autrement(self):
+        from unittest import mock
+        appli = os.path.join(self.d, 'apps')
+        ecrire(appli, 'libreoffice-startcenter.desktop', '[Desktop Entry]\nType=Application\nName=LibreOffice\nExec=libreoffice\n')
+        lo = {'id': 'app-lo', 'nom': 'LibreOffice', 'type': 'appli', 'installateurs': [{'methode': 'flatpak', 'paquet': 'org.libreoffice.LibreOffice'}]}
+        self.p._systeme = None
+        with mock.patch.object(self.p, '_lanceurs', return_value={'libreoffice-startcenter': os.path.join(appli, 'libreoffice-startcenter.desktop')}):
+            self.assertTrue(self.p.presente(lo, None))   # paquet de la distribution : pas de Flatpak en plus
+            self.assertFalse(self.p.presente({**lo, 'nom': 'GIMP'}, None))
+        self.p._systeme = None
 
     def test_session(self):
         from unittest import mock
@@ -331,37 +353,62 @@ class ProfilBureau(unittest.TestCase):
         pol = SimpleNamespace(fichiers=lambda rel: [(g, self.f)] if rel == self.p.FICHIER else [], fichier=lambda *a: None)
         ctx = cli.Contexte(conf=Conf(domaine='exemple.local'), pol=pol, f=Fichiers(os.path.join(self.d, 'etat')), noms=None,
                            utilisateur='jdupont')
-        epingles = []
-        with mock.patch.object(self.p, '_lanceurs', return_value={'firefox': os.path.join(appli, 'firefox.desktop')}), \
+        epingles, installees = [], set()
+        demande = mock.Mock(side_effect=lambda c, s, a: installees.update(['std-vlc']) or {'installees': ['std-vlc'], 'echecs': {'std-7zip': 'snapd absent'}})
+        ecrire(appli, 'vlc.desktop', '[Desktop Entry]\nType=Application\nName=VLC\nExec=vlc\n')
+        lanceurs = {'firefox': os.path.join(appli, 'firefox.desktop'), 'vlc': os.path.join(appli, 'vlc.desktop')}
+        with mock.patch.object(self.p, '_lanceurs', return_value=lanceurs), \
                 mock.patch.object(self.p, 'dossier_bureau', return_value=bureau), \
-                mock.patch.object(self.p, 'demander_installation', return_value=False) as demande, \
+                mock.patch.object(self.p, 'presente', side_effect=lambda a, g: a['id'] == 'std-firefox' or a['id'] in installees), \
+                mock.patch.object(self.p, 'demander_installation', demande), \
                 mock.patch.object(self.p, 'outil', side_effect=lambda n: n == 'plasmashell'), \
                 mock.patch.object(self.p, 'epingler_plasma', side_effect=lambda u: epingles.append(u) or True), \
-                mock.patch.object(self.p, 'chemin', return_value=os.path.join(self.d, 'absent')):
+                mock.patch.object(self.p, 'chemin', return_value=os.path.join(self.d, 'absent')), \
+                mock.patch('linux_gpo.ext.logiciels.gestionnaire', return_value=None):
             self.p.Profil().appliquer(ctx)
             ctx.f.terminer()
-            self.assertEqual(demande.call_args[0][1:], ([g.guid], ['org.videolan.VLC']))
-            self.assertEqual(sorted(os.listdir(bureau)), ['linux-gpo-firefox.desktop', 'linux-gpo-intranet.desktop', 'linux-gpo-rh.desktop'])
-            self.assertEqual(epingles, [['file://' + os.path.join(appli, 'firefox.desktop')]])
+            self.assertEqual(demande.call_args[0][1:], ([g.guid], ['std-vlc', 'std-7zip']))
+            self.assertEqual(sorted(os.listdir(bureau)), ['linux-gpo-00-std-firefox.desktop', 'linux-gpo-01-partage-rh.desktop',
+                                                          'linux-gpo-02-std-vlc.desktop', 'linux-gpo-03-web-intranet.desktop'])
+            self.assertEqual(epingles, [['file://' + lanceurs['firefox'], 'file://' + lanceurs['vlc']]])
+            self.assertIn('installation impossible — snapd absent', '\n'.join(ctx.rapport['profil']))
             self.p.Profil().appliquer(ctx)  # même profil : épingles déjà posées, l’utilisateur garde ses changements
             self.assertEqual(len(epingles), 1)
-        with open(os.path.join(bureau, 'linux-gpo-rh.desktop')) as fh:
+            self.assertEqual(demande.call_count, 1)  # 7-Zip en échec : pas redemandée tout de suite
+        with open(os.path.join(bureau, 'linux-gpo-01-partage-rh.desktop')) as fh:
             self.assertIn('URL=smb://dc01.exemple.local/RH', fh.read())
 
-    def test_demandes(self):
+    def test_demandes_et_resultat(self):
+        from unittest import mock
+        from types import SimpleNamespace
         racine = os.path.join(self.d, 'racine')
         systeme.RACINE = racine
         self.addCleanup(setattr, systeme, 'RACINE', '')
         d = racine + self.p.DEMANDES
         os.makedirs(d)
-        ecrire(d, f'{os.getuid()}.json', json.dumps({'sources': ['{AAAAAAAA-2222-3333-4444-555555555555}'], 'apps': ['org.videolan.VLC']}))
+        guid = '{AAAAAAAA-2222-3333-4444-555555555555}'
+        ecrire(d, f'{os.getuid()}.json', json.dumps({'sources': [guid], 'apps': ['std-vlc', 'outil-pirate']}))
         ecrire(d, f'{os.getuid() + 1}.json', '{}')  # déposé au nom d’un autre utilisateur : supprimé
         res = self.p.ApplicationsProfils._demandes()
-        self.assertEqual([(u, x['apps']) for _, u, x in res], [(os.getuid(), ['org.videolan.VLC'])])
-        self.assertEqual(os.listdir(d), [f'{os.getuid()}.json'])
-        from types import SimpleNamespace
-        ctx = SimpleNamespace(annuaire=None, conf=Conf(domaine='exemple.local'))
-        self.assertEqual(self.p.ApplicationsProfils._autorisees(ctx, ['{AAAAAAAA-2222-3333-4444-555555555555}'], None), set())
+        self.assertEqual([(u, x['apps']) for _, u, x in res], [(os.getuid(), ['std-vlc', 'outil-pirate'])])
+
+        # le service relit le profil dans SYSVOL : seule VLC (choisie par l’administrateur) est installée
+        class Annuaire:
+            def chercher(s, *a, **k):
+                return [{'gpcfilesyspath': [b'\\\\exemple.local\\SysVol\\exemple.local\\Policies\\' + guid.encode()]}]
+
+            def copier_fichier(s, unc, dest):
+                shutil.copyfile(self.f, dest)
+        resultats = os.path.join(self.d, 'resultats')
+        ctx = SimpleNamespace(annuaire=Annuaire(), conf=Conf(domaine='exemple.local'), simuler=False, rapport={},
+                              noter=lambda e, t: None)
+        with mock.patch.object(self.p, 'installer_apps', return_value=(['std-vlc'], {})) as inst, \
+                mock.patch.object(self.p, 'RESULTATS', resultats):
+            self.p.ApplicationsProfils().appliquer(ctx)
+        self.assertEqual([a['id'] for a in inst.call_args[0][2]], ['std-vlc'])
+        with open(os.path.join(resultats, f'{os.getuid()}.json')) as fh:
+            self.assertEqual(json.load(fh)['installees'], ['std-vlc'])
+        self.assertEqual(os.listdir(d), [])
 
 
 if __name__ == '__main__':

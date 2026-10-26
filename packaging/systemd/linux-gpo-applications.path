@@ -1,0 +1,12 @@
+[Unit]
+Description=Demandes d'installation des profils de bureau (GPO)
+Documentation=https://github.com/jonathan-pp/linux-gpo-agent
+
+[Path]
+# une session a déposé une demande : le service (root) relit le profil dans SYSVOL et installe
+DirectoryNotEmpty=/var/spool/linux-gpo
+MakeDirectory=yes
+DirectoryMode=1733
+
+[Install]
+WantedBy=paths.target

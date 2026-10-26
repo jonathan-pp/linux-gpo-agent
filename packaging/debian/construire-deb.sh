@@ -14,7 +14,7 @@ install -m 755 "$RACINE/packaging/bin/linux-gpo" "$P/usr/bin/linux-gpo"
 install -m 755 "$RACINE/packaging/bin/gpupdate" "$P/usr/bin/gpupdate"
 install -Dm 644 "$RACINE/packaging/polkit/50-linux-gpo.rules" "$P/usr/share/polkit-1/rules.d/50-linux-gpo.rules"
 install -m 755 "$RACINE/packaging/bin/acces" "$P/usr/lib/linux-gpo/acces"
-install -m 644 "$RACINE"/packaging/systemd/linux-gpo.service "$RACINE"/packaging/systemd/linux-gpo.timer "$RACINE"/packaging/systemd/linux-gpo-applications.service "$P/lib/systemd/system/"
+install -m 644 "$RACINE"/packaging/systemd/linux-gpo.service "$RACINE"/packaging/systemd/linux-gpo.timer "$RACINE"/packaging/systemd/linux-gpo-applications.service "$RACINE"/packaging/systemd/linux-gpo-applications.path "$P/lib/systemd/system/"
 install -m 644 "$RACINE"/packaging/systemd/linux-gpo-utilisateur* "$P/usr/lib/systemd/user/"
 install -m 644 "$RACINE/packaging/agent.conf" "$P/etc/linux-gpo/agent.conf"
 install -m 644 "$RACINE/README.md" "$RACINE/LICENSE" "$P/usr/share/doc/linux-gpo/"
@@ -42,7 +42,7 @@ mkdir -p /var/lib/linux-gpo /var/cache/linux-gpo
 chmod 700 /var/lib/linux-gpo /var/cache/linux-gpo
 if [ -d /run/systemd/system ]; then
   systemctl daemon-reload
-  systemctl enable linux-gpo.service linux-gpo.timer >/dev/null
+  systemctl enable linux-gpo.service linux-gpo.timer linux-gpo-applications.path >/dev/null
   systemctl start linux-gpo.timer
   systemctl --global enable linux-gpo-utilisateur.service linux-gpo-utilisateur-actualiser.timer >/dev/null
 fi

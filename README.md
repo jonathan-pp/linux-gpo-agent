@@ -109,14 +109,18 @@ réglages SSH déjà définis dans la configuration ne sont pas modifiés par le
 
 ## Profils de bureau
 
-Un profil de bureau (Console Annuaire › Profils de bureau) est une GPO qui contient `USER/LinuxGPO/bureau.json` :
-icônes du bureau, épingles de la barre des tâches, applications et fond d’écran, pour les membres de groupes choisis.
+Un profil de bureau (Console Annuaire › Profils de bureau) est une GPO, liée à des OU et filtrée comme les autres, qui
+contient `USER/LinuxGPO/bureau.json` : icônes du bureau, épingles de la barre des tâches, applications et fond d’écran.
 
-- À l’ouverture de session, les applications déjà présentes (paquet, Snap ou Flatpak, reconnues par leur lanceur) sont
-  posées sur le bureau et épinglées (Plasma, GNOME).
-- Celles qui manquent sont demandées au service système `linux-gpo-applications`, qui les installe depuis Flathub pour
-  tout le poste : il relit lui-même le profil dans SYSVOL, une session ne peut donc faire installer que des applications
-  choisies par un administrateur. Elles apparaissent ensuite sur le bureau.
+- Les applications sont celles de la bibliothèque de PXE Deploy, avec leurs installateurs. L’agent prend le meilleur
+  pour le poste, comme PXE Deploy : paquet de la distribution d’abord (Debian, Ubuntu, Arch), puis Snap ou Flatpak. Une
+  application déjà présente autrement (paquet, Snap, Flatpak, reconnue par son lanceur) n’est pas installée une
+  seconde fois.
+- À l’ouverture de session, les icônes et les épingles (Plasma, GNOME) des applications présentes sont posées. Les
+  manquantes sont demandées au service système : un fichier dans `/var/spool/linux-gpo` démarre
+  `linux-gpo-applications` (unité `.path`). Le service relit le profil dans SYSVOL avec le ticket de l’ordinateur — une
+  session ne peut faire installer que ce qu’un administrateur a choisi —, installe, puis répond à la session, qui pose
+  les icônes restantes.
 - Les épingles sont posées quand le profil change ; l’utilisateur peut ensuite les modifier (comme la disposition de la
   barre des tâches de Windows). Les icônes du bureau sont reposées à chaque passage et retirées avec le profil.
 - Poste hors domaine : un profil posé dans `/etc/linux-gpo/bureau.json` (PXE Deploy le fait) s’applique à tous les

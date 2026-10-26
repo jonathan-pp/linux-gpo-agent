@@ -91,6 +91,10 @@ in
           TimeoutStartSec = "60min";
         };
       };
+      systemd.paths.linux-gpo-applications = {
+        wantedBy = [ "paths.target" ];
+        pathConfig = { DirectoryNotEmpty = "/var/spool/linux-gpo"; MakeDirectory = true; DirectoryMode = "1733"; };
+      };
       systemd.tmpfiles.settings.linux-gpo."/var/spool/linux-gpo".d = { mode = "1733"; };
       systemd.timers.linux-gpo = {
         wantedBy = [ "timers.target" ];

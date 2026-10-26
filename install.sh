@@ -43,9 +43,9 @@ fi
 
 if [ "$DESINSTALLER" = 1 ]; then
   [ -x /usr/bin/linux-gpo ] && /usr/bin/linux-gpo retirer-tout || true
-  systemctl disable --now linux-gpo.timer linux-gpo.service 2>/dev/null || true
+  systemctl disable --now linux-gpo.timer linux-gpo.service linux-gpo-applications.path 2>/dev/null || true
   systemctl --global disable linux-gpo-utilisateur.service linux-gpo-utilisateur-actualiser.timer 2>/dev/null || true
-  rm -rf "$LIB" /usr/bin/linux-gpo /usr/bin/gpupdate /usr/bin/gpupgrade /etc/polkit-1/rules.d/50-linux-gpo.rules /etc/systemd/system/linux-gpo.* /etc/systemd/system/linux-gpo-applications.service /etc/systemd/user/linux-gpo-* /var/cache/linux-gpo /var/spool/linux-gpo
+  rm -rf "$LIB" /usr/bin/linux-gpo /usr/bin/gpupdate /usr/bin/gpupgrade /etc/polkit-1/rules.d/50-linux-gpo.rules /etc/systemd/system/linux-gpo.* /etc/systemd/system/linux-gpo-applications.* /etc/systemd/user/linux-gpo-* /var/cache/linux-gpo /var/spool/linux-gpo
   systemctl daemon-reload 2>/dev/null || true
   echo "linux-gpo désinstallé (la configuration /etc/linux-gpo et l'état /var/lib/linux-gpo sont conservés)."
   exit 0
@@ -100,16 +100,16 @@ if [ -n "$DOMAINE" ] && ! grep -q '^domaine *=' /etc/linux-gpo/agent.conf; then
   sed -i "s|^# domaine = .*|domaine = $DOMAINE|" /etc/linux-gpo/agent.conf
 fi
 mkdir -p /etc/systemd/system /etc/systemd/user
-install -m 644 "$SRC"/packaging/systemd/linux-gpo.service "$SRC"/packaging/systemd/linux-gpo.timer "$SRC"/packaging/systemd/linux-gpo-applications.service /etc/systemd/system/
+install -m 644 "$SRC"/packaging/systemd/linux-gpo.service "$SRC"/packaging/systemd/linux-gpo.timer "$SRC"/packaging/systemd/linux-gpo-applications.service "$SRC"/packaging/systemd/linux-gpo-applications.path /etc/systemd/system/
 install -m 644 "$SRC"/packaging/systemd/linux-gpo-utilisateur*.service "$SRC"/packaging/systemd/linux-gpo-utilisateur*.timer /etc/systemd/user/
 
 # Activation des unités : aussi dans un chroot d'installation (déploiement PXE), où systemd ne tourne pas mais où « enable » suffit
 # (liens créés) ; sans cela ni le minuteur de l'ordinateur ni le passage à l'ouverture de session ne démarraient jamais.
 if command -v systemctl >/dev/null; then
   [ -d /run/systemd/system ] && systemctl daemon-reload
-  systemctl enable linux-gpo.service linux-gpo.timer >/dev/null
+  systemctl enable linux-gpo.service linux-gpo.timer linux-gpo-applications.path >/dev/null
   systemctl --global enable linux-gpo-utilisateur.service linux-gpo-utilisateur-actualiser.timer >/dev/null
-  [ -d /run/systemd/system ] && systemctl start linux-gpo.timer
+  [ -d /run/systemd/system ] && systemctl start linux-gpo.timer linux-gpo-applications.path
 fi
 
 echo "== Vérification"
