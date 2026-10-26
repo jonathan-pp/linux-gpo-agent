@@ -1,7 +1,11 @@
-// linux-gpo : « gpupdate » lancé par un utilisateur d'une session locale peut démarrer le passage des stratégies de
-// l'ordinateur (et rien d'autre : ce service ne fait qu'appliquer les GPO publiées par les administrateurs du domaine).
+// linux-gpo : un utilisateur d'une session locale peut démarrer
+//   - le passage des stratégies de l'ordinateur (« gpupdate ») ;
+//   - l'installation des applications de ses profils de bureau (le service ne garde que celles qu'un administrateur a
+//     mises dans un profil publié dans le domaine).
+// Rien d'autre : ces services n'appliquent que ce que les administrateurs du domaine ont publié.
 polkit.addRule(function (action, subject) {
-  if (action.id == "org.freedesktop.systemd1.manage-units" && action.lookup("unit") == "linux-gpo.service" &&
+  if (action.id == "org.freedesktop.systemd1.manage-units" &&
+      (action.lookup("unit") == "linux-gpo.service" || action.lookup("unit") == "linux-gpo-applications.service") &&
       action.lookup("verb") == "start" && subject.local && subject.active) {
     return polkit.Result.YES;
   }

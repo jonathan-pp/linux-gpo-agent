@@ -5,7 +5,8 @@ After=graphical-session-pre.target dbus.socket
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/linux-gpo utilisateur --ouverture
-TimeoutStartSec=5min
+# profil de bureau : attend l’installation des applications manquantes (service système)
+TimeoutStartSec=45min
 
 [Install]
 WantedBy=default.target

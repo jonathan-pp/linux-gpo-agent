@@ -1,0 +1,12 @@
+[Unit]
+Description=Applications des profils de bureau (GPO), installées depuis Flathub
+Documentation=https://github.com/jonathan-pp/linux-gpo-agent
+Wants=network-online.target
+After=network-online.target linux-gpo.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/linux-gpo applications
+# premières applications Flatpak : environnement d'exécution compris, plusieurs centaines de Mo
+TimeoutStartSec=60min
+Nice=10

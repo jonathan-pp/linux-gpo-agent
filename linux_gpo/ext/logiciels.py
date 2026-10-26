@@ -96,19 +96,26 @@ class Logiciels(Extension):
             code, msg = retirer(g, presents)
             ctx.noter(self.nom, f"désinstallation de {', '.join(presents)} : {'faite' if code == 0 else 'échec — ' + msg}")
         if flatpaks:
-            self._flatpak(ctx, g, flatpaks)
+            installer_flatpaks(ctx, self.nom, flatpaks)
 
-    def _flatpak(self, ctx, g, apps):
+
+def installer_flatpaks(ctx, ext: str, apps: list[str]) -> list[str]:
+    """Installe pour tout le poste les applications Flathub manquantes (flatpak installé au besoin) ; renvoie celles en échec."""
+    if not outil('flatpak'):
+        g = gestionnaire()
+        if g and not est_nixos():
+            installer(g, ['flatpak'])
         if not outil('flatpak'):
-            if g and not est_nixos():
-                installer(g, ['flatpak'])
-            if not outil('flatpak'):
-                ctx.noter(self.nom, 'flatpak non disponible : applications ignorées')
-                return
-        lancer(['flatpak', 'remote-add', '--system', '--if-not-exists', 'flathub', FLATHUB], delai=300)
-        for app in apps:
-            if lancer(['flatpak', 'info', '--system', app]).returncode == 0:
-                ctx.noter(self.nom, f'{app} (Flatpak) : installé')
-                continue
-            r = lancer(['flatpak', 'install', '--system', '-y', '--noninteractive', 'flathub', app], delai=3600)
-            ctx.noter(self.nom, f"{app} (Flatpak) : {'installé' if r.returncode == 0 else 'échec — ' + (r.stderr or r.stdout).strip()[-200:]}")
+            ctx.noter(ext, 'flatpak non disponible : applications ignorées')
+            return list(apps)
+    lancer(['flatpak', 'remote-add', '--system', '--if-not-exists', 'flathub', FLATHUB], delai=300)
+    echecs = []
+    for app in apps:
+        if lancer(['flatpak', 'info', '--system', app]).returncode == 0:
+            ctx.noter(ext, f'{app} (Flatpak) : installé')
+            continue
+        r = lancer(['flatpak', 'install', '--system', '-y', '--noninteractive', 'flathub', app], delai=3600)
+        if r.returncode:
+            echecs.append(app)
+        ctx.noter(ext, f"{app} (Flatpak) : {'installé' if r.returncode == 0 else 'échec — ' + (r.stderr or r.stdout).strip()[-200:]}")
+    return echecs

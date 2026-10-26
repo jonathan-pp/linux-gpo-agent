@@ -258,10 +258,6 @@ class Raccourcis(unittest.TestCase):
             shutil.rmtree(d)
 
 
-if __name__ == '__main__':
-    unittest.main()
-
-
 class Maj(unittest.TestCase):
     def test_sources_et_installation(self):
         import io
@@ -291,3 +287,82 @@ class Maj(unittest.TestCase):
         with mock.patch.object(maj, 'telecharger', return_value=b'pas une archive'), \
                 self.assertRaises(systeme.ErreurAgent):
             maj.mettre_a_jour(c, True)
+
+
+class ProfilBureau(unittest.TestCase):
+    PROFIL = {'version': 1, 'nom': 'Bureau RH',
+              'apps': [{'id': 'firefox', 'nom': 'Firefox', 'type': 'appli', 'flatpak': 'org.mozilla.firefox', 'lanceurs': ['firefox']},
+                       {'id': 'vlc', 'nom': 'VLC', 'type': 'appli', 'flatpak': 'org.videolan.VLC'},
+                       {'id': 'intranet', 'nom': 'Intranet', 'type': 'web', 'url': 'https://intranet.exemple.local'},
+                       {'id': 'rh', 'nom': 'Partage RH', 'type': 'partage', 'chemin': '\\\\dc01\\RH'},
+                       {'id': '../x', 'nom': 'Mauvais', 'type': 'web', 'url': 'https://x'},
+                       {'id': 'pirate', 'nom': 'Pirate', 'type': 'appli', 'flatpak': 'rm -rf /'}],
+              'bureau': [{'app': 'intranet', 'col': 1, 'lig': 0}, {'app': 'firefox', 'col': 0, 'lig': 0},
+                         {'app': 'rh', 'col': 0, 'lig': 1}, {'app': 'vlc', 'col': 0, 'lig': 2}, {'app': 'inconnue'}],
+              'barre': ['firefox', 'vlc', 'intranet'], 'fond': '../../etc/shadow'}
+
+    def setUp(self):
+        from linux_gpo.ext import profil
+        self.p = profil
+        self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d)
+        self.f = os.path.join(self.d, 'bureau.json')
+        with open(self.f, 'w', encoding='utf-8') as fh:
+            json.dump(self.PROFIL, fh)
+
+    def test_lecture(self):
+        p = self.p.charger(self.f)
+        self.assertEqual(sorted(p['apps']), ['firefox', 'intranet', 'pirate', 'rh', 'vlc'])
+        self.assertEqual(p['apps']['pirate']['flatpak'], '')     # identifiant Flatpak invalide : ignoré
+        self.assertEqual(p['fond'], '')                          # chemin hors du dossier du profil : refusé
+        self.assertEqual(p['barre'], ['firefox', 'vlc'])         # seules des applications s’épinglent
+        f = self.p.fusionner([p])
+        self.assertEqual(f['bureau'], ['firefox', 'rh', 'vlc', 'intranet'])  # colonne par colonne
+        self.assertEqual(self.p.unc_vers_smb('\\\\dc01\\RH\\Docs', 'exemple.local'), 'smb://dc01.exemple.local/RH/Docs')
+
+    def test_session(self):
+        from unittest import mock
+        from types import SimpleNamespace
+        from linux_gpo.fichiers import Fichiers
+        appli = os.path.join(self.d, 'apps')
+        ecrire(appli, 'firefox.desktop', '[Desktop Entry]\nType=Application\nName=Firefox\nExec=firefox\n')
+        bureau = os.path.join(self.d, 'Bureau')
+        g = SimpleNamespace(guid='{11111111-2222-3333-4444-555555555555}')
+        pol = SimpleNamespace(fichiers=lambda rel: [(g, self.f)] if rel == self.p.FICHIER else [], fichier=lambda *a: None)
+        ctx = cli.Contexte(conf=Conf(domaine='exemple.local'), pol=pol, f=Fichiers(os.path.join(self.d, 'etat')), noms=None,
+                           utilisateur='jdupont')
+        epingles = []
+        with mock.patch.object(self.p, '_lanceurs', return_value={'firefox': os.path.join(appli, 'firefox.desktop')}), \
+                mock.patch.object(self.p, 'dossier_bureau', return_value=bureau), \
+                mock.patch.object(self.p, 'demander_installation', return_value=False) as demande, \
+                mock.patch.object(self.p, 'outil', side_effect=lambda n: n == 'plasmashell'), \
+                mock.patch.object(self.p, 'epingler_plasma', side_effect=lambda u: epingles.append(u) or True), \
+                mock.patch.object(self.p, 'chemin', return_value=os.path.join(self.d, 'absent')):
+            self.p.Profil().appliquer(ctx)
+            ctx.f.terminer()
+            self.assertEqual(demande.call_args[0][1:], ([g.guid], ['org.videolan.VLC']))
+            self.assertEqual(sorted(os.listdir(bureau)), ['linux-gpo-firefox.desktop', 'linux-gpo-intranet.desktop', 'linux-gpo-rh.desktop'])
+            self.assertEqual(epingles, [['file://' + os.path.join(appli, 'firefox.desktop')]])
+            self.p.Profil().appliquer(ctx)  # même profil : épingles déjà posées, l’utilisateur garde ses changements
+            self.assertEqual(len(epingles), 1)
+        with open(os.path.join(bureau, 'linux-gpo-rh.desktop')) as fh:
+            self.assertIn('URL=smb://dc01.exemple.local/RH', fh.read())
+
+    def test_demandes(self):
+        racine = os.path.join(self.d, 'racine')
+        systeme.RACINE = racine
+        self.addCleanup(setattr, systeme, 'RACINE', '')
+        d = racine + self.p.DEMANDES
+        os.makedirs(d)
+        ecrire(d, f'{os.getuid()}.json', json.dumps({'sources': ['{AAAAAAAA-2222-3333-4444-555555555555}'], 'apps': ['org.videolan.VLC']}))
+        ecrire(d, f'{os.getuid() + 1}.json', '{}')  # déposé au nom d’un autre utilisateur : supprimé
+        res = self.p.ApplicationsProfils._demandes()
+        self.assertEqual([(u, x['apps']) for _, u, x in res], [(os.getuid(), ['org.videolan.VLC'])])
+        self.assertEqual(os.listdir(d), [f'{os.getuid()}.json'])
+        from types import SimpleNamespace
+        ctx = SimpleNamespace(annuaire=None, conf=Conf(domaine='exemple.local'))
+        self.assertEqual(self.p.ApplicationsProfils._autorisees(ctx, ['{AAAAAAAA-2222-3333-4444-555555555555}'], None), set())
+
+
+if __name__ == '__main__':
+    unittest.main()

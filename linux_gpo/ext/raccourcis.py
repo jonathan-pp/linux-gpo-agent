@@ -112,7 +112,9 @@ class Raccourcis(Extension):
 
     def appliquer(self, ctx):
         voulus = {}
-        for _, f in ctx.pol.fichiers(SHORTCUTS):
+        for g, f in ctx.pol.fichiers(SHORTCUTS):
+            if ctx.pol.fichier(g, 'USER/LinuxGPO/bureau.json'):
+                continue  # profil de bureau : ses raccourcis (écrits pour Windows) sont posés par l’extension Profil
             try:
                 racine = ET.parse(f).getroot()
             except (OSError, ET.ParseError):

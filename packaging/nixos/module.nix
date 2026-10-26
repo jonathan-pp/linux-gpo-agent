@@ -80,6 +80,18 @@ in
           TimeoutStartSec = "10min";
         };
       };
+      systemd.services.linux-gpo-applications = {
+        description = "Applications des profils de bureau (GPO)";
+        wants = [ "network-online.target" ];
+        after = [ "network-online.target" "linux-gpo.service" ];
+        path = [ "/run/wrappers" "/run/current-system/sw" ];
+        serviceConfig = {
+          Type = "oneshot";
+          ExecStart = "${cfg.package}/bin/linux-gpo applications";
+          TimeoutStartSec = "60min";
+        };
+      };
+      systemd.tmpfiles.settings.linux-gpo."/var/spool/linux-gpo".d = { mode = "1733"; };
       systemd.timers.linux-gpo = {
         wantedBy = [ "timers.target" ];
         timerConfig = { OnBootSec = "90min"; OnUnitActiveSec = "90min"; RandomizedDelaySec = "30min"; };

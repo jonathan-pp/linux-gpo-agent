@@ -7,6 +7,7 @@
     linux-gpo retirer-tout                      retire tout ce que l’agent a posé (remet les fichiers d’origine)
     linux-gpo hors-ligne DOSSIER [--simuler]    applique des GPO copiées dans DOSSIER (tests)
     linux-gpo maj [--force]                     met l’agent à jour (Console du domaine, sinon GitHub)
+    linux-gpo applications [--fichier F]        installe les applications des profils de bureau (service dédié)
 """
 from __future__ import annotations
 
@@ -72,9 +73,58 @@ def _afficher(ctx: Contexte, gpos: list[Gpo]) -> None:
             print('  ' + l)
 
 
+def _profil_local(c, simuler: bool = False) -> int:
+    """Compte local, ou poste hors domaine : seul le profil de bureau local (/etc/linux-gpo/bureau.json) s’applique."""
+    from .ext import profil
+    if not os.path.exists(systeme.chemin(profil.LOCAL)):
+        return 0
+    etat = os.path.expanduser('~/.local/state/linux-gpo')
+    ctx = Contexte(conf=c, pol=Politique([], False), f=Fichiers(etat, simuler), noms=None, simuler=simuler,
+                   utilisateur=getpass.getuser())
+    executer(ctx, [profil.Profil()])
+    _rapport(etat, ctx, [], {'profil_local': profil.LOCAL})
+    return 0
+
+
+def _lancer_applications() -> None:
+    """Installation des applications des profils de bureau : service à part, pour ne jamais retarder l’écran de connexion."""
+    if os.path.isdir('/run/systemd/system'):
+        lancer(['systemctl', 'start', '--no-block', 'linux-gpo-applications.service'])
+
+
+def applications(args) -> int:
+    from .ext import profil
+    c = configuration.charger()
+    # état à part : les fichiers des autres extensions de l’ordinateur ne sont pas concernés par ce passage
+    ctx = Contexte(conf=c, pol=Politique([], True), f=Fichiers(os.path.join(c.etat, 'applications'), args.simuler),
+                   noms=None, simuler=args.simuler)
+    a = None
+    if c.domaine and not args.fichier:
+        try:
+            a = Annuaire(c)
+            a.connexion_machine()
+        except ErreurAgent as e:  # demandes des sessions gardées pour le prochain passage
+            journal.warning('annuaire injoignable : %s', e)
+            a = None
+    ctx.annuaire = a
+    try:
+        profil.ApplicationsProfils(args.fichier).appliquer(ctx)
+    finally:
+        if a:
+            a.fermer()
+    for lignes in ctx.rapport.values():
+        for l in lignes:
+            print(l)
+    return 0
+
+
 def machine(args) -> int:
     c = configuration.charger()
     if not c.domaine:
+        from .ext import profil
+        if os.path.exists(systeme.chemin(profil.LOCAL)):
+            _lancer_applications()  # poste hors domaine avec un profil de bureau local
+            return 0
         raise ErreurAgent('domaine inconnu : le poste n’est pas joint (ou renseignez /etc/linux-gpo/agent.conf)')
     with Annuaire(c) as a:
         a.connexion_machine()
@@ -89,6 +139,12 @@ def machine(args) -> int:
                        sid_domaine=compte.sid.rsplit('-', 1)[0], jeton=compte.jeton)
         changes = executer(ctx, extensions(True))
         _rapport(c.etat, ctx, liste, {'controleur': a.serveur, 'compte': c.compte})
+    from .ext.profil import DEMANDES
+    try:
+        if not args.simuler and os.listdir(systeme.chemin(DEMANDES)):
+            _lancer_applications()  # demandes de sessions restées en attente
+    except OSError:
+        pass
     journal.info('%d GPO, %d fichier(s) modifié(s)', len(liste), len(changes))
     if args.simuler or args.verbeux:
         _afficher(ctx, liste)
@@ -121,12 +177,12 @@ def utilisateur(args) -> int:
     etat = os.path.expanduser('~/.local/state/linux-gpo')
     cache = os.path.expanduser('~/.cache/linux-gpo/gpo')
     if not c.domaine:
-        return 0
+        return _profil_local(c, args.simuler)
     try:
         import pwd
         with open('/etc/passwd', encoding='utf-8', errors='replace') as fh:
             if any(l.split(':', 1)[0] == nom for l in fh):
-                return 0  # compte local : pas de GPO
+                return _profil_local(c, args.simuler)  # compte local : pas de GPO, profil local éventuel
         pwd.getpwnam(nom)
     except (OSError, KeyError):
         pass
@@ -270,6 +326,9 @@ def main(argv=None) -> int:
     s.add_parser('diagnostic', help='vérifie la configuration du poste')
     s.add_parser('retirer-tout', help='retire tous les réglages posés par l’agent')
     s.add_parser('redemarrer-si-besoin')
+    b = s.add_parser('applications', help='installe les applications des profils de bureau')
+    b.add_argument('--fichier', default='', help='profil à préinstaller (déploiement), sans en faire le profil du poste')
+    b.add_argument('--simuler', action='store_true')
     m = s.add_parser('maj', help='met l’agent à jour')
     m.add_argument('--force', action='store_true', help='réinstalle même si l’agent est déjà à jour')
     h = s.add_parser('hors-ligne', help='applique des GPO copiées dans un dossier (tests)')
@@ -284,13 +343,13 @@ def main(argv=None) -> int:
     if cmd == 'appliquer' and not hasattr(args, 'simuler'):
         args = p.parse_args(['appliquer'] + (argv or sys.argv[1:]))
     actions = {'appliquer': machine, 'utilisateur': utilisateur, 'resultat': resultat, 'diagnostic': diagnostic,
-               'retirer-tout': retirer_tout, 'redemarrer-si-besoin': redemarrer_si_besoin, 'hors-ligne': hors_ligne, 'maj': maj}
-    besoin_root = cmd in ('appliquer', 'retirer-tout', 'redemarrer-si-besoin', 'maj') and not getattr(args, 'simuler', False)
+               'retirer-tout': retirer_tout, 'redemarrer-si-besoin': redemarrer_si_besoin, 'hors-ligne': hors_ligne, 'maj': maj, 'applications': applications}
+    besoin_root = cmd in ('appliquer', 'retirer-tout', 'redemarrer-si-besoin', 'maj', 'applications') and not getattr(args, 'simuler', False)
     if besoin_root and os.geteuid() != 0:
         print('linux-gpo : à lancer en root', file=sys.stderr)
         return 2
     verrou = None
-    if besoin_root and cmd != 'maj':  # maj : install.sh relance lui-même un passage, qui prend le verrou
+    if besoin_root and cmd not in ('maj', 'applications'):  # maj : install.sh relance lui-même un passage, qui prend le verrou
         verrou = open(VERROU, 'w')
         try:
             fcntl.flock(verrou, fcntl.LOCK_EX | fcntl.LOCK_NB)

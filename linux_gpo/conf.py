@@ -5,6 +5,7 @@
     serveur = dc01.exemple.local     # contrôleur à utiliser (sinon : enregistrements DNS SRV du domaine)
     keytab = /etc/krb5.keytab        # clés du compte machine, créées par la jonction au domaine
     compte = PC01$                   # compte machine (par défaut : nom court du poste en majuscules + $)
+    hors_domaine = oui               # poste hors domaine (profil de bureau local seulement) : aucun contrôleur cherché
 """
 from __future__ import annotations
 
@@ -66,6 +67,9 @@ def _domaine_detecte() -> str:
                 return m.group(1)
     except OSError:
         pass
+    # suffixe du nom du poste : seulement s’il est joint (clés du compte machine), sinon c’est souvent celui de la box (DHCP)
+    if not os.path.exists(chemin('/etc/krb5.keytab')):
+        return ''
     fq = socket.getfqdn()
     return fq.split('.', 1)[1] if '.' in fq else ''
 
@@ -78,7 +82,8 @@ def compte_machine() -> str:
 def charger(f: str = FICHIER) -> Conf:
     cp = _ini(f)
     a = cp['agent'] if cp.has_section('agent') else {}
-    domaine = (a.get('domaine') or _domaine_detecte()).lower()
+    hors = str(a.get('hors_domaine', '')).strip().lower() in ('1', 'oui', 'yes', 'true')
+    domaine = '' if hors else (a.get('domaine') or _domaine_detecte()).lower()
     c = Conf(domaine=domaine, serveur=a.get('serveur', ''), keytab=a.get('keytab', '/etc/krb5.keytab'),
              compte=a.get('compte', '') or compte_machine(), cache=a.get('cache', CACHE), etat=a.get('etat', ETAT),
              options={k: v for k, v in a.items()})

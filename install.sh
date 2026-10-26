@@ -45,7 +45,7 @@ if [ "$DESINSTALLER" = 1 ]; then
   [ -x /usr/bin/linux-gpo ] && /usr/bin/linux-gpo retirer-tout || true
   systemctl disable --now linux-gpo.timer linux-gpo.service 2>/dev/null || true
   systemctl --global disable linux-gpo-utilisateur.service linux-gpo-utilisateur-actualiser.timer 2>/dev/null || true
-  rm -rf "$LIB" /usr/bin/linux-gpo /usr/bin/gpupdate /usr/bin/gpupgrade /etc/polkit-1/rules.d/50-linux-gpo.rules /etc/systemd/system/linux-gpo.* /etc/systemd/user/linux-gpo-* /var/cache/linux-gpo
+  rm -rf "$LIB" /usr/bin/linux-gpo /usr/bin/gpupdate /usr/bin/gpupgrade /etc/polkit-1/rules.d/50-linux-gpo.rules /etc/systemd/system/linux-gpo.* /etc/systemd/system/linux-gpo-applications.service /etc/systemd/user/linux-gpo-* /var/cache/linux-gpo /var/spool/linux-gpo
   systemctl daemon-reload 2>/dev/null || true
   echo "linux-gpo désinstallé (la configuration /etc/linux-gpo et l'état /var/lib/linux-gpo sont conservés)."
   exit 0
@@ -91,6 +91,8 @@ PY=$(command -v python3)
 [ "$PY" = /usr/bin/python3 ] || sed -i "1s|.*|#!$PY -I|" /usr/bin/linux-gpo "$LIB/acces"
 [ -f /etc/linux-gpo/agent.conf ] || install -m 644 "$SRC/packaging/agent.conf" /etc/linux-gpo/agent.conf
 chmod 700 /var/lib/linux-gpo /var/cache/linux-gpo
+# demandes d'installation des sessions (profils de bureau) : chacun dépose la sienne, sans voir celles des autres
+install -d -m 1733 /var/spool/linux-gpo
 # Domaine écrit dans la configuration (lisible de tous) : sssd.conf n'est lisible que de root, et sans lui un utilisateur du domaine
 # retombait sur le suffixe DNS reçu par DHCP (celui de la box) et cherchait ses stratégies sur un contrôleur inexistant.
 DOMAINE=$(python3 -I -c "import sys; sys.path.insert(0, '$LIB'); from linux_gpo import conf; print(conf._domaine_detecte())" 2>/dev/null)
@@ -98,7 +100,7 @@ if [ -n "$DOMAINE" ] && ! grep -q '^domaine *=' /etc/linux-gpo/agent.conf; then
   sed -i "s|^# domaine = .*|domaine = $DOMAINE|" /etc/linux-gpo/agent.conf
 fi
 mkdir -p /etc/systemd/system /etc/systemd/user
-install -m 644 "$SRC"/packaging/systemd/linux-gpo.service "$SRC"/packaging/systemd/linux-gpo.timer /etc/systemd/system/
+install -m 644 "$SRC"/packaging/systemd/linux-gpo.service "$SRC"/packaging/systemd/linux-gpo.timer "$SRC"/packaging/systemd/linux-gpo-applications.service /etc/systemd/system/
 install -m 644 "$SRC"/packaging/systemd/linux-gpo-utilisateur*.service "$SRC"/packaging/systemd/linux-gpo-utilisateur*.timer /etc/systemd/user/
 
 # Activation des unités : aussi dans un chroot d'installation (déploiement PXE), où systemd ne tourne pas mais où « enable » suffit

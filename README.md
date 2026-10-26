@@ -59,6 +59,7 @@ de la GPO, le poste revient à son état d’origine.
 | Navigateurs | toutes les stratégies Firefox, Chrome, Chromium, Edge, Brave (modèles ADMX officiels) | fichiers de stratégie JSON |
 | Utilisateur | lecteurs réseau (préférences Windows) et dossier personnel (homeDirectory) | favoris GNOME et KDE, montage gio |
 | Utilisateur | raccourcis (préférences Windows) : bureau, menu, démarrage | lanceurs .desktop (application installée, site web, partage) |
+| | profils de bureau de la Console Annuaire : icônes, barre des tâches, applications | lanceurs, épingles Plasma / GNOME, Flathub (voir plus bas) |
 | | écran de veille, papier peint, invite de commandes (stratégies Windows) | réglages de la session |
 | | scripts d’ouverture de session | lancés dans la session |
 
@@ -101,9 +102,25 @@ réglages SSH déjà définis dans la configuration ne sont pas modifiés par le
 | `linux-gpo diagnostic` | vérifie domaine, keytab, Kerberos, LDAP, SYSVOL et outils |
 | `linux-gpo retirer-tout` | retire tout ce que l’agent a posé |
 | `gpupdate` (`/force`, `/target:user`…) | relance tout de suite les GPO, comme sous Windows |
+| `sudo linux-gpo applications` | installe les applications des profils de bureau demandées par les sessions (service `linux-gpo-applications`) |
 | `sudo gpupgrade` (ou `sudo linux-gpo maj`) | met l’agent à jour depuis la Console Annuaire du domaine (sinon GitHub) ; source choisie par `source_maj` dans `agent.conf` |
 
 ![Résultat sur un poste](docs/resultat.svg)
+
+## Profils de bureau
+
+Un profil de bureau (Console Annuaire › Profils de bureau) est une GPO qui contient `USER/LinuxGPO/bureau.json` :
+icônes du bureau, épingles de la barre des tâches, applications et fond d’écran, pour les membres de groupes choisis.
+
+- À l’ouverture de session, les applications déjà présentes (paquet, Snap ou Flatpak, reconnues par leur lanceur) sont
+  posées sur le bureau et épinglées (Plasma, GNOME).
+- Celles qui manquent sont demandées au service système `linux-gpo-applications`, qui les installe depuis Flathub pour
+  tout le poste : il relit lui-même le profil dans SYSVOL, une session ne peut donc faire installer que des applications
+  choisies par un administrateur. Elles apparaissent ensuite sur le bureau.
+- Les épingles sont posées quand le profil change ; l’utilisateur peut ensuite les modifier (comme la disposition de la
+  barre des tâches de Windows). Les icônes du bureau sont reposées à chaque passage et retirées avec le profil.
+- Poste hors domaine : un profil posé dans `/etc/linux-gpo/bureau.json` (PXE Deploy le fait) s’applique à tous les
+  comptes locaux ; `hors_domaine = oui` dans `agent.conf` évite de chercher un contrôleur.
 
 ## Régler les postes Linux depuis Windows
 
