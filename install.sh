@@ -85,15 +85,23 @@ PY=$(command -v python3)
 [ "$PY" = /usr/bin/python3 ] || sed -i "1s|.*|#!$PY -I|" /usr/bin/linux-gpo "$LIB/acces"
 [ -f /etc/linux-gpo/agent.conf ] || install -m 644 "$SRC/packaging/agent.conf" /etc/linux-gpo/agent.conf
 chmod 700 /var/lib/linux-gpo /var/cache/linux-gpo
+# Domaine écrit dans la configuration (lisible de tous) : sssd.conf n'est lisible que de root, et sans lui un utilisateur du domaine
+# retombait sur le suffixe DNS reçu par DHCP (celui de la box) et cherchait ses stratégies sur un contrôleur inexistant.
+DOMAINE=$(python3 -I -c "import sys; sys.path.insert(0, '$LIB'); from linux_gpo import conf; print(conf._domaine_detecte())" 2>/dev/null)
+if [ -n "$DOMAINE" ] && ! grep -q '^domaine *=' /etc/linux-gpo/agent.conf; then
+  sed -i "s|^# domaine = .*|domaine = $DOMAINE|" /etc/linux-gpo/agent.conf
+fi
 mkdir -p /etc/systemd/system /etc/systemd/user
 install -m 644 "$SRC"/packaging/systemd/linux-gpo.service "$SRC"/packaging/systemd/linux-gpo.timer /etc/systemd/system/
 install -m 644 "$SRC"/packaging/systemd/linux-gpo-utilisateur*.service "$SRC"/packaging/systemd/linux-gpo-utilisateur*.timer /etc/systemd/user/
 
-if [ -d /run/systemd/system ]; then
-  systemctl daemon-reload
+# Activation des unités : aussi dans un chroot d'installation (déploiement PXE), où systemd ne tourne pas mais où « enable » suffit
+# (liens créés) ; sans cela ni le minuteur de l'ordinateur ni le passage à l'ouverture de session ne démarraient jamais.
+if command -v systemctl >/dev/null; then
+  [ -d /run/systemd/system ] && systemctl daemon-reload
   systemctl enable linux-gpo.service linux-gpo.timer >/dev/null
-  systemctl start linux-gpo.timer
   systemctl --global enable linux-gpo-utilisateur.service linux-gpo-utilisateur-actualiser.timer >/dev/null
+  [ -d /run/systemd/system ] && systemctl start linux-gpo.timer
 fi
 
 echo "== Vérification"

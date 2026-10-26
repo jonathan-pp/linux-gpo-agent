@@ -16,6 +16,7 @@ import re
 import xml.etree.ElementTree as ET
 
 from . import K_LGPO, K_WIN_EXPL, K_WIN_SYS, Extension, entier, vrai
+from ..annuaire import echapper_filtre, un
 from ..systeme import ErreurAgent, lancer, outil
 
 K_DESK = r'Software\Policies\Microsoft\Windows\Control Panel\Desktop'
@@ -158,6 +159,7 @@ class Lecteurs(Extension):
                     url = 'smb:' + chemin.replace('\\', '/')
                     libelle = pr.get('label') or f"{chemin.rstrip(chr(92)).split(chr(92))[-1]} ({pr.get('letter', '')}:)"
                     lecteurs[cle] = (url, libelle)
+        self._dossier_personnel(ctx, lecteurs)
         mem = ctx.f.memoire(self.nom)
         voulus = sorted(lecteurs.values())
         for url, lib in voulus:
@@ -170,6 +172,25 @@ class Lecteurs(Extension):
             for url, _ in voulus:
                 lancer(['gio', 'mount', url], delai=30)
         mem['lecteurs'] = [list(x) for x in voulus]
+
+    @staticmethod
+    def _dossier_personnel(ctx, lecteurs):
+        """Dossier de base du compte (attributs homeDirectory / homeDrive), monté sous Windows comme lecteur P: : repris ici."""
+        if not ctx.annuaire:
+            return
+        try:
+            r = ctx.annuaire.chercher(ctx.conf.base, f'(&(objectClass=user)(sAMAccountName={echapper_filtre(ctx.utilisateur)}))',
+                                      ['homeDirectory', 'homeDrive'], portee='sub')
+        except ErreurAgent:
+            return
+        chemin = un(r[0], 'homeDirectory') if r else ''
+        if not chemin.startswith('\\\\'):
+            return
+        hote, _, reste = chemin[2:].partition('\\')
+        if '.' not in hote:
+            hote += '.' + ctx.conf.domaine  # nom court NetBIOS : non résolu sous Linux sans le suffixe du domaine
+        lettre = un(r[0], 'homeDrive') or 'P:'
+        lecteurs.setdefault(lettre.upper(), ('smb://' + hote + '/' + reste.replace('\\', '/'), f'Dossier personnel ({lettre})'))
 
     @staticmethod
     def _gtk(voulus, avant):
