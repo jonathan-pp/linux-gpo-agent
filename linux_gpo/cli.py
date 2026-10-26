@@ -94,6 +94,25 @@ def machine(args) -> int:
     return 0
 
 
+def _ccache_session() -> str | None:
+    """Ticket Kerberos de la session. Le service utilisateur de systemd n’hérite pas de KRB5CCNAME, posé par PAM dans la
+    session graphique : sssd range le ticket dans /tmp/krb5cc_<uid>_XXXXXX, que kinit ne trouve pas seul."""
+    if os.environ.get('KRB5CCNAME'):
+        return None
+    uid = os.getuid()
+    candidats = []
+    for n in os.listdir('/tmp'):
+        p = os.path.join('/tmp', n)
+        if n == f'krb5cc_{uid}' or n.startswith(f'krb5cc_{uid}_'):
+            try:
+                st = os.stat(p)
+            except OSError:
+                continue
+            if st.st_uid == uid:
+                candidats.append((st.st_mtime, p))
+    return 'FILE:' + max(candidats)[1] if candidats else None
+
+
 def utilisateur(args) -> int:
     c = configuration.charger()
     nom = getpass.getuser()
@@ -110,7 +129,7 @@ def utilisateur(args) -> int:
         pwd.getpwnam(nom)
     except (OSError, KeyError):
         pass
-    a = Annuaire(c)  # ticket de la session de l’utilisateur
+    a = Annuaire(c, _ccache_session())  # ticket de la session de l’utilisateur
     compte = gpos_mod.compte(a, sam, False)
     liste = gpos_mod.liste(a, compte, c.options.get('filtres_wmi', 'exclure'))
     copier_sysvol(a, liste, False, cache)

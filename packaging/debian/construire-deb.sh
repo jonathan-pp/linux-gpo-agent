@@ -11,6 +11,8 @@ mkdir -p "$P/DEBIAN" "$P/usr/lib/linux-gpo" "$P/usr/bin" "$P/lib/systemd/system"
 cp -r "$RACINE/linux_gpo" "$P/usr/lib/linux-gpo/"
 find "$P" -name __pycache__ -prune -exec rm -rf {} +
 install -m 755 "$RACINE/packaging/bin/linux-gpo" "$P/usr/bin/linux-gpo"
+install -m 755 "$RACINE/packaging/bin/gpupdate" "$P/usr/bin/gpupdate"
+install -Dm 644 "$RACINE/packaging/polkit/50-linux-gpo.rules" "$P/usr/share/polkit-1/rules.d/50-linux-gpo.rules"
 install -m 755 "$RACINE/packaging/bin/acces" "$P/usr/lib/linux-gpo/acces"
 install -m 644 "$RACINE"/packaging/systemd/linux-gpo.service "$RACINE"/packaging/systemd/linux-gpo.timer "$P/lib/systemd/system/"
 install -m 644 "$RACINE"/packaging/systemd/linux-gpo-utilisateur* "$P/usr/lib/systemd/user/"

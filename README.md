@@ -57,7 +57,8 @@ de la GPO, le poste revient à son état d’origine.
 | Logiciels | paquets à installer ou retirer, applications Flatpak | apt, pacman, dnf, zypper, flatpak |
 | | scripts de démarrage, toutes les heures / jours / semaines / mois | minuteurs systemd |
 | Navigateurs | toutes les stratégies Firefox, Chrome, Chromium, Edge, Brave (modèles ADMX officiels) | fichiers de stratégie JSON |
-| Utilisateur | lecteurs réseau (préférences Windows) | favoris GNOME et KDE, montage gio |
+| Utilisateur | lecteurs réseau (préférences Windows) et dossier personnel (homeDirectory) | favoris GNOME et KDE, montage gio |
+| Utilisateur | raccourcis (préférences Windows) : bureau, menu, démarrage | lanceurs .desktop (application installée, site web, partage) |
 | | écran de veille, papier peint, invite de commandes (stratégies Windows) | réglages de la session |
 | | scripts d’ouverture de session | lancés dans la session |
 

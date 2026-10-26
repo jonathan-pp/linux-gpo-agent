@@ -1,0 +1,35 @@
+#!/bin/sh
+# gpupdate : relance tout de suite l'application des stratégies de groupe, comme la commande de Windows.
+#   gpupdate                     ordinateur puis utilisateur connecté
+#   gpupdate /force              recopie toutes les GPO depuis SYSVOL (partie ordinateur : root, sinon comme sans /force)
+#   gpupdate /target:computer    ou /target:user : une seule des deux parties
+FORCE= ; CIBLE=tout
+for a in "$@"; do
+  case "$(printf %s "$a" | tr 'A-Z' 'a-z')" in
+    /force|--force|-f) FORCE=--force ;;
+    /target:computer|--target=computer) CIBLE=ordinateur ;;
+    /target:user|--target=user) CIBLE=utilisateur ;;
+    '/?'|-h|--help) sed -n '2,5p' "$0" | cut -c3-; exit 0 ;;
+    *) echo "gpupdate : option inconnue « $a » (gpupdate /?)" >&2; exit 2 ;;
+  esac
+done
+CODE=0
+if [ "$CIBLE" != utilisateur ]; then
+  echo "Mise à jour de la stratégie d'ordinateur…"
+  if [ "$(id -u)" = 0 ]; then
+    linux-gpo appliquer $FORCE || CODE=1
+  else
+    # service système (autorisé aux sessions locales par la règle polkit installée avec l'agent)
+    systemctl start linux-gpo.service || CODE=1
+  fi
+  [ $CODE = 0 ] && echo "La mise à jour de la stratégie d'ordinateur s'est terminée sans erreur."
+fi
+if [ "$CIBLE" != ordinateur ] && [ "$(id -u)" != 0 ]; then
+  echo "Mise à jour de la stratégie utilisateur…"
+  if linux-gpo utilisateur; then
+    echo "La mise à jour de la stratégie utilisateur s'est terminée sans erreur."
+  else
+    CODE=1
+  fi
+fi
+exit $CODE

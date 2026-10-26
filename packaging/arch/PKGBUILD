@@ -18,6 +18,8 @@ package() {
   cp -r "$r/linux_gpo" "$pkgdir/usr/lib/linux-gpo/"
   find "$pkgdir" -name __pycache__ -prune -exec rm -rf {} +
   install -Dm755 "$r/packaging/bin/linux-gpo" "$pkgdir/usr/bin/linux-gpo"
+  install -Dm755 "$r/packaging/bin/gpupdate" "$pkgdir/usr/bin/gpupdate"
+  install -Dm644 "$r/packaging/polkit/50-linux-gpo.rules" "$pkgdir/usr/share/polkit-1/rules.d/50-linux-gpo.rules"
   install -Dm755 "$r/packaging/bin/acces" "$pkgdir/usr/lib/linux-gpo/acces"
   install -Dm644 -t "$pkgdir/usr/lib/systemd/system" "$r"/packaging/systemd/linux-gpo.service "$r"/packaging/systemd/linux-gpo.timer
   install -Dm644 -t "$pkgdir/usr/lib/systemd/user" "$r"/packaging/systemd/linux-gpo-utilisateur*

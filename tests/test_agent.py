@@ -239,5 +239,24 @@ class Application(unittest.TestCase):
         self.assertIn('banniere : Bienvenue\nUsage réservé', r['bureau'])
 
 
+class Raccourcis(unittest.TestCase):
+    def test_cibles(self):
+        from linux_gpo.ext import raccourcis as r
+        d = tempfile.mkdtemp()
+        try:
+            for n, nom in (('org.mozilla.firefox', 'Firefox'), ('google-chrome', 'Google Chrome'), ('vlc', 'VLC media player')):
+                ecrire(d, n + '.desktop', f'[Desktop Entry]\nType=Application\nName={nom}\nExec={n}\n')
+            l = {n[:-8]: os.path.join(d, n) for n in os.listdir(d)}
+            self.assertTrue(r.trouver_application('Firefox', l).endswith('org.mozilla.firefox.desktop'))
+            self.assertTrue(r.trouver_application(r'C:\Program Files\Google\Chrome\Application\chrome.exe', l).endswith('google-chrome.desktop'))
+            self.assertTrue(r.trouver_application('VLC media player', l).endswith('vlc.desktop'))
+            self.assertIsNone(r.trouver_application('notepad++', l))
+            self.assertIn('URL=smb://dc01/Commun', r.lanceur(r'\\dc01\Commun', 'Commun', '', l))
+            self.assertIn('Type=Link', r.lanceur('https://intranet.exemple.local', 'Intranet', '', l))
+            self.assertIn('Exec=vlc', r.lanceur('vlc', 'VLC', '', l))
+        finally:
+            shutil.rmtree(d)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -45,7 +45,7 @@ if [ "$DESINSTALLER" = 1 ]; then
   [ -x /usr/bin/linux-gpo ] && /usr/bin/linux-gpo retirer-tout || true
   systemctl disable --now linux-gpo.timer linux-gpo.service 2>/dev/null || true
   systemctl --global disable linux-gpo-utilisateur.service linux-gpo-utilisateur-actualiser.timer 2>/dev/null || true
-  rm -rf "$LIB" /usr/bin/linux-gpo /etc/systemd/system/linux-gpo.* /etc/systemd/user/linux-gpo-* /var/cache/linux-gpo
+  rm -rf "$LIB" /usr/bin/linux-gpo /usr/bin/gpupdate /etc/polkit-1/rules.d/50-linux-gpo.rules /etc/systemd/system/linux-gpo.* /etc/systemd/user/linux-gpo-* /var/cache/linux-gpo
   systemctl daemon-reload 2>/dev/null || true
   echo "linux-gpo désinstallé (la configuration /etc/linux-gpo et l'état /var/lib/linux-gpo sont conservés)."
   exit 0
@@ -80,6 +80,11 @@ mkdir -p "$LIB" /etc/linux-gpo /var/lib/linux-gpo /var/cache/linux-gpo
 cp -r "$SRC/linux_gpo" "$LIB/"
 find "$LIB" -name __pycache__ -prune -exec rm -rf {} +
 install -m 755 "$SRC/packaging/bin/linux-gpo" /usr/bin/linux-gpo
+install -m 755 "$SRC/packaging/bin/gpupdate" /usr/bin/gpupdate
+if [ -d /usr/share/polkit-1/rules.d ] || [ -d /etc/polkit-1 ]; then
+  install -d -m 755 /etc/polkit-1/rules.d
+  install -m 644 "$SRC/packaging/polkit/50-linux-gpo.rules" /etc/polkit-1/rules.d/50-linux-gpo.rules
+fi
 install -m 755 "$SRC/packaging/bin/acces" "$LIB/acces"
 PY=$(command -v python3)
 [ "$PY" = /usr/bin/python3 ] || sed -i "1s|.*|#!$PY -I|" /usr/bin/linux-gpo "$LIB/acces"

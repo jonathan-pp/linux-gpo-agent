@@ -19,6 +19,8 @@ stdenvNoCC.mkDerivation {
     makeWrapper $out/lib/linux-gpo/linux-gpo.py $out/bin/linux-gpo \
       --suffix PATH : ${lib.makeBinPath [ krb5 openldap samba ]}
     mv $out/lib/linux-gpo/acces.py $out/lib/linux-gpo/acces
+    sed -E "s#linux-gpo (appliquer|utilisateur)#$out/bin/linux-gpo \1#" packaging/bin/gpupdate > $out/bin/gpupdate
+    chmod 755 $out/bin/gpupdate
     runHook postInstall
   '';
   meta = {
