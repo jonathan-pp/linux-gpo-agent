@@ -1,0 +1,10 @@
+#!/bin/sh
+# gpupgrade : met l'agent linux-gpo à jour (comme « linux-gpo maj ») ; gpupdate, lui, relance les stratégies.
+#   sudo gpupgrade           depuis la Console Annuaire du domaine, sinon GitHub
+#   sudo gpupgrade /force    réinstalle même si l'agent est déjà à jour
+case "$(printf %s "${1:-}" | tr 'A-Z' 'a-z')" in
+  '') exec linux-gpo maj ;;
+  /force|--force|-f) exec linux-gpo maj --force ;;
+  '/?'|-h|--help) sed -n '2,4p' "$0" | cut -c3-; exit 0 ;;
+  *) echo "gpupgrade : option inconnue « $1 » (gpupgrade /?)" >&2; exit 2 ;;
+esac

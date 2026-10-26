@@ -101,7 +101,7 @@ réglages SSH déjà définis dans la configuration ne sont pas modifiés par le
 | `linux-gpo diagnostic` | vérifie domaine, keytab, Kerberos, LDAP, SYSVOL et outils |
 | `linux-gpo retirer-tout` | retire tout ce que l’agent a posé |
 | `gpupdate` (`/force`, `/target:user`…) | relance tout de suite les GPO, comme sous Windows |
-| `sudo linux-gpo maj` | met l’agent à jour depuis la Console Annuaire du domaine (sinon GitHub) ; source choisie par `source_maj` dans `agent.conf` |
+| `sudo gpupgrade` (ou `sudo linux-gpo maj`) | met l’agent à jour depuis la Console Annuaire du domaine (sinon GitHub) ; source choisie par `source_maj` dans `agent.conf` |
 
 ![Résultat sur un poste](docs/resultat.svg)
 
