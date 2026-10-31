@@ -398,6 +398,17 @@ class ProfilBureau(unittest.TestCase):
         faites, echecs = self.p.installer_apps(Ctx(), 'profil', [{**deux, 'installateurs': [{**i, 'distros': []} for i in deux['installateurs']]}])
         self.assertEqual((faites, echecs, essais), (['x'], {}, ['native', 'github']))
 
+    def test_nouvel_essai_si_les_installateurs_changent(self):
+        app = {'installateurs': [{'methode': 'native', 'paquet': 'unstable.pdfcraft', 'classic': False, 'distros': []}]}
+        corrige = {'installateurs': [{'methode': 'github', 'paquet': 'storytold/pdfcraft', 'classic': False, 'distros': []}]}
+        t = 1_000_000.0
+        essai = [t, self.p.signature(app)]
+        self.assertFalse(self.p.a_redemander(app, essai, t + 60))                    # échec récent : on attend
+        self.assertTrue(self.p.a_redemander(app, essai, t + self.p.NOUVEL_ESSAI + 1))
+        self.assertTrue(self.p.a_redemander(corrige, essai, t + 60))                 # profil corrigé : tout de suite
+        self.assertTrue(self.p.a_redemander(app, t, t + 60))                         # mémoire d’une version précédente
+        self.assertTrue(self.p.a_redemander(app, None, t))
+
     def test_lecture_et_choix_de_l_installateur(self):
         p = self.p.charger(self.f)
         self.assertEqual(sorted(p['apps']), ['partage-rh', 'pirate', 'std-7zip', 'std-firefox', 'std-vlc', 'web-intranet'])

@@ -31,6 +31,7 @@ Poste hors domaine : le profil posé par PXE Deploy dans /etc/linux-gpo/bureau.j
 from __future__ import annotations
 
 import glob
+import hashlib
 import json
 import logging
 import os
@@ -59,7 +60,13 @@ TAILLES = ['scalable', '512x512', '256x256', '128x128', '96x96', '64x64', '48x48
 # ordre de préférence des installateurs (celui de PXE Deploy) ; distribution inconnue : Flatpak d’abord
 ORDRE = {'debian': ['native', 'flatpak', 'snap', 'github'], 'ubuntu': ['native', 'snap', 'flatpak', 'github'], 'arch': ['native', 'flatpak', 'github'],
          None: ['flatpak', 'native', 'snap', 'github']}
-NOUVEL_ESSAI = 30 * 60                      # application en échec : redemandée au plus toutes les 30 minutes
+NOUVEL_ESSAI = 30 * 60                      # application en échec : redemandée au plus toutes les 30 minutes…
+# … sauf si ses installateurs ou l’agent ont changé depuis (profil corrigé, agent mis à jour) : redemandée tout de suite
+try:
+    with open(__file__, 'rb') as _fh, open(os.path.join(os.path.dirname(__file__), 'logiciels.py'), 'rb') as _fh2:
+        _CODE = hashlib.sha1(_fh.read() + _fh2.read()).hexdigest()[:10]
+except OSError:
+    _CODE = ''
 ATTENTE = 40 * 60                           # attente maximale du service d’installation par la session
 
 
@@ -144,6 +151,18 @@ def fusionner(liste: list[dict]) -> dict:
         if p['fond']:
             fond, style, bande = p['fond'], p['fond_style'], p['fond_bande']
     return {'apps': apps, 'bureau': bureau, 'barre': barre, 'installer': installer, 'fond': fond, 'fond_style': style, 'fond_bande': bande}
+
+
+def signature(app: dict) -> str:
+    """Empreinte de ce qui décide de l’installation : installateurs de l’application et code de l’agent."""
+    return hashlib.sha1((json.dumps(app.get('installateurs') or [], sort_keys=True) + _CODE).encode()).hexdigest()[:12]
+
+
+def a_redemander(app: dict, essai, maintenant: float) -> bool:
+    """Vrai si l’application peut être redemandée : jamais demandée, demandée il y a plus de NOUVEL_ESSAI, ou depuis que ses
+    installateurs ou l’agent ont changé. `essai` : [date, signature] (ou une date seule, mémoire des versions précédentes)."""
+    date, sig = essai if isinstance(essai, list) and len(essai) == 2 else (essai if isinstance(essai, (int, float)) else 0, '')
+    return maintenant - date > NOUVEL_ESSAI or sig != signature(app)
 
 
 def utiles(p: dict) -> list[str]:
@@ -491,10 +510,10 @@ class Profil(Extension):
         lanceurs = _lanceurs()
         self._bureau(ctx, p, lanceurs, g, bureau)
         recent = mem.get('demandes', {})
-        a_demander = [i for i in manquantes if time.time() - recent.get(i, 0) > NOUVEL_ESSAI]
+        a_demander = [i for i in manquantes if a_redemander(p['apps'][i], recent.get(i), time.time())]
         if a_demander and not ctx.simuler:
             ctx.noter(self.nom, 'à installer : ' + ', '.join(p['apps'][i]['nom'] for i in a_demander))
-            mem['demandes'] = {**recent, **{i: time.time() for i in a_demander}}
+            mem['demandes'] = {**recent, **{i: [time.time(), signature(p['apps'][i])] for i in a_demander}}
             r = demander_installation(ctx, [s for s, _ in liste], a_demander)
             for i, m in ((r or {}).get('echecs') or {}).items():
                 ctx.noter(self.nom, f"{p['apps'].get(i, {}).get('nom', i)} : installation impossible — {m}")
