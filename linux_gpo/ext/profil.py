@@ -14,7 +14,11 @@ PXE Deploy, avec leurs installateurs :
      "bureau": ["perso", "std-vlc", "web-intranet"],     (ordre des icônes)
      "barre": ["std-vlc"],                               (applications épinglées)
      "installer": ["std-7zip"],                          (installées sans icône : menu des applications)
-     "fond": "fond.png"}                                 (image à côté de bureau.json, facultative)
+     "fond": "fond.png",                                 (image à côté de bureau.json, facultative)
+     "disposition": {"barre": {"position": "bas", "taille": "normale", "centree": true},
+                     "icones": {"taille": "grande", "libre": true, "positions": {"std-vlc": [0, 1]}},   ([colonne, ligne])
+                     "theme": {"mode": "sombre", "accent": "vert"}, "verrou": true}}
+     (chaque réglage vide ou absent : celui du poste reste)
 
 Choix de l’installateur, comme PXE Deploy : paquet de la distribution d’abord (Debian, Ubuntu, Arch), puis Snap ou
 Flatpak (Ubuntu : Snap avant Flatpak). Une application est « présente » si l’un de ses installateurs l’est déjà.
@@ -25,6 +29,9 @@ relit le profil dans SYSVOL avec le ticket de l’ordinateur (une session ne fai
 choisi), installe, puis écrit le résultat que la session attend avant de poser les icônes restantes.
 Les épingles sont posées quand le profil change (l’utilisateur peut ensuite les modifier, comme la disposition de la barre
 des tâches de Windows). Les icônes du bureau sont reposées à chaque passage et retirées avec le profil.
+Disposition : barre des tâches (panneau de Plasma ; Ubuntu Dock ou Dash to Dock sous GNOME), taille et place des icônes du
+bureau (Plasma ; Desktop Icons NG sous GNOME), thème clair ou sombre et couleur d’accent. Posée quand le profil change ;
+verrouillée, elle est reposée à chaque passage avec les épingles, et Plasma interdit de déverrouiller les éléments graphiques.
 
 Poste hors domaine : le profil posé par PXE Deploy dans /etc/linux-gpo/bureau.json s’applique à tous les comptes locaux.
 """
@@ -69,6 +76,19 @@ except OSError:
     _CODE = ''
 ATTENTE = 40 * 60                           # attente maximale du service d’installation par la session
 
+# disposition : valeurs du profil → Plasma (panneau, FolderView) et GNOME (Ubuntu Dock / Dash to Dock, Desktop Icons NG)
+POSITIONS_BARRE = {'bas': ('bottom', 'BOTTOM'), 'haut': ('top', 'TOP'), 'gauche': ('left', 'LEFT'), 'droite': ('right', 'RIGHT')}
+HAUTEUR_PANNEAU = {'petite': 32, 'normale': 44, 'grande': 56}          # pixels
+ICONES_DOCK = {'petite': 32, 'normale': 48, 'grande': 64}              # dash-max-icon-size
+ICONES_PLASMA = {'petite': 2, 'normale': 3, 'grande': 4}               # iconSize (32, 48, 64 pixels)
+ICONES_DING = {'petite': 'small', 'normale': 'standard', 'grande': 'large'}
+CASE_DING = {'tiny': (70, 80), 'small': (90, 90), 'standard': (120, 106), 'large': (130, 138)}   # case de la grille, pixels
+# couleurs d’accent de GNOME (accent-color, GNOME 47 et suivants), avec leur teinte pour Plasma
+ACCENTS = {'bleu': ('blue', '#3584e4'), 'sarcelle': ('teal', '#2190a4'), 'vert': ('green', '#3a944a'), 'jaune': ('yellow', '#c88800'),
+           'orange': ('orange', '#ed5b00'), 'rouge': ('red', '#e62d42'), 'rose': ('pink', '#d56199'), 'violet': ('purple', '#9141ac'),
+           'ardoise': ('slate', '#6f8396')}
+GRILLE = (30, 20)                           # colonnes, lignes : place d’une icône du bureau
+
 
 # ---------------------------------------------------------------- lecture et fusion des profils
 
@@ -84,6 +104,44 @@ def _installateurs(a: dict) -> list[dict]:
     if a.get('flatpak') and PAQUET['flatpak'].match(str(a['flatpak'])):  # profils de la première version
         res.append({'methode': 'flatpak', 'paquet': a['flatpak'], 'classic': False, 'distros': []})
     return res
+
+
+def _case(x) -> list[int] | None:
+    ok = isinstance(x, list) and len(x) == 2 and all(isinstance(n, int) and not isinstance(n, bool) for n in x)
+    return list(x) if ok and 0 <= x[0] < GRILLE[0] and 0 <= x[1] < GRILLE[1] else None
+
+
+def disposition(v, bureau=()) -> dict:
+    """Disposition nettoyée ; '' ou None : réglage du poste conservé. Positions : icônes du bureau seulement, une par case."""
+    v = v if isinstance(v, dict) else {}
+    b, ic, th = (v.get(k) if isinstance(v.get(k), dict) else {} for k in ('barre', 'icones', 'theme'))
+    positions, prises = {}, []
+    for i, x in (ic.get('positions') if isinstance(ic.get('positions'), dict) else {}).items():
+        c = _case(x)
+        if i in bureau and c and c not in prises:
+            positions[i] = c
+            prises.append(c)
+    choix = lambda d, k, valeurs: d.get(k) if d.get(k) in valeurs else ''
+    return {'barre': {'position': choix(b, 'position', POSITIONS_BARRE), 'taille': choix(b, 'taille', HAUTEUR_PANNEAU),
+                      'centree': b['centree'] if isinstance(b.get('centree'), bool) else None},
+            'icones': {'taille': choix(ic, 'taille', ICONES_PLASMA), 'libre': ic.get('libre') is True and bool(positions),
+                       'positions': positions if ic.get('libre') is True else {}},
+            'theme': {'mode': choix(th, 'mode', ('clair', 'sombre')), 'accent': choix(th, 'accent', ACCENTS)},
+            'verrou': v.get('verrou') is True}
+
+
+def fusionner_disposition(liste: list[dict]) -> dict:
+    """Réglage par réglage, le dernier profil qui en définit un l’emporte ; un seul profil verrouillé verrouille."""
+    d = disposition(None)
+    for x in liste:
+        for groupe in ('barre', 'theme'):
+            d[groupe].update({k: val for k, val in x[groupe].items() if val not in ('', None)})
+        if x['icones']['taille']:
+            d['icones']['taille'] = x['icones']['taille']
+        if x['icones']['libre']:
+            d['icones'].update(libre=True, positions=x['icones']['positions'])
+        d['verrou'] = d['verrou'] or x['verrou']
+    return d
 
 
 def charger(f: str) -> dict | None:
@@ -124,7 +182,7 @@ def charger(f: str) -> dict | None:
         fond = ''
     return {'nom': str(d.get('nom') or '')[:120], 'apps': apps, 'bureau': bureau, 'barre': barre, 'installer': installer,
             'fond': os.path.join(os.path.dirname(f), fond) if fond else '', 'fond_style': style_fond(d.get('fondStyle')),
-            'fond_bande': bande_fond(d.get('fondBande'))}
+            'fond_bande': bande_fond(d.get('fondBande')), 'disposition': disposition(d.get('disposition'), bureau)}
 
 
 def profils(ctx) -> list[tuple[str, dict]]:
@@ -150,7 +208,8 @@ def fusionner(liste: list[dict]) -> dict:
         barre = p['barre'] or barre
         if p['fond']:
             fond, style, bande = p['fond'], p['fond_style'], p['fond_bande']
-    return {'apps': apps, 'bureau': bureau, 'barre': barre, 'installer': installer, 'fond': fond, 'fond_style': style, 'fond_bande': bande}
+    return {'apps': apps, 'bureau': bureau, 'barre': barre, 'installer': installer, 'fond': fond, 'fond_style': style, 'fond_bande': bande,
+            'disposition': fusionner_disposition([p.get('disposition') or disposition(None) for p in liste])}
 
 
 def signature(app: dict) -> str:
@@ -322,6 +381,11 @@ def contenu_appli(f: str) -> str | None:
     return t
 
 
+def nom_icone(n: int, ident: str) -> str:
+    """Lanceur posé sur le bureau ; numéro d’ordre dans le nom : les bureaux qui trient par nom gardent l’ordre du profil."""
+    return f'linux-gpo-{n:02d}-{ident}.desktop'
+
+
 def unc_vers_smb(unc: str, domaine: str) -> str:
     hote, _, reste = unc[2:].partition('\\')
     if '.' not in hote and domaine:
@@ -440,16 +504,11 @@ def _bus() -> dict:
     return {'DBUS_SESSION_BUS_ADDRESS': f'unix:path=/run/user/{os.getuid()}/bus'}
 
 
-def epingler_plasma(urls: list[str], attente: int = 90) -> bool:
-    """Lanceurs épinglés du gestionnaire de tâches de Plasma (script du bureau, appliqué au panneau en cours)."""
+def script_plasma(script: str, attente: int = 60) -> bool:
+    """Script du bureau Plasma (qui affiche le nombre d’éléments modifiés) : vrai s’il a modifié quelque chose."""
     gdbus = outil('gdbus')
     if not gdbus:
         return False
-    script = ('var l = ' + json.dumps(urls) + ', n = 0;\n'
-              'panels().forEach(function (p) { p.widgets().forEach(function (w) {\n'
-              '  if (w.type == "org.kde.plasma.icontasks" || w.type == "org.kde.plasma.taskmanager") {\n'
-              '    w.currentConfigGroup = ["General"]; w.writeConfig("launchers", l); n++; } }); });\n'
-              'print(n);')
     fin = time.time() + attente
     while True:  # à l’ouverture de session, plasmashell n’est pas forcément encore prêt
         r = lancer([gdbus, 'call', '--session', '--dest', 'org.kde.plasmashell', '--object-path', '/PlasmaShell',
@@ -461,25 +520,116 @@ def epingler_plasma(urls: list[str], attente: int = 90) -> bool:
         time.sleep(5)
 
 
+def epingler_plasma(urls: list[str], attente: int = 90) -> bool:
+    """Lanceurs épinglés du gestionnaire de tâches de Plasma (script du bureau, appliqué au panneau en cours)."""
+    return script_plasma('var l = ' + json.dumps(urls) + ', n = 0;\n'
+                         'panels().forEach(function (p) { p.widgets().forEach(function (w) {\n'
+                         '  if (w.type == "org.kde.plasma.icontasks" || w.type == "org.kde.plasma.taskmanager") {\n'
+                         '    w.currentConfigGroup = ["General"]; w.writeConfig("launchers", l); n++; } }); });\n'
+                         'print(n);', attente)
+
+
 def bandes_plasma(bande: dict, attente: int = 60) -> bool:
     """Couleur des bandes et flou du fond d’écran de chaque bureau Plasma (script du bureau)."""
-    gdbus = outil('gdbus')
-    if not gdbus:
-        return False
     rvb = ','.join(str(int(bande['couleur'][i:i + 2], 16)) for i in (1, 3, 5))
-    script = ('var n = 0;\ndesktops().forEach(function (d) { if (d.wallpaperPlugin == "org.kde.image") {\n'
-              '  d.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];\n'
-              '  d.writeConfig("Color", "' + rvb + '"); d.writeConfig("Blur", ' + ('true' if bande['mode'] == 'flou' else 'false') + '); n++; } });\n'
-              'print(n);')
-    fin = time.time() + attente
-    while True:
-        r = lancer([gdbus, 'call', '--session', '--dest', 'org.kde.plasmashell', '--object-path', '/PlasmaShell',
-                    '--method', 'org.kde.PlasmaShell.evaluateScript', script], env=_bus(), delai=30)
-        if r.returncode == 0:
-            return not re.search(r"'0'|\(''", r.stdout)
-        if time.time() > fin:
-            return False
-        time.sleep(5)
+    return script_plasma('var n = 0;\ndesktops().forEach(function (d) { if (d.wallpaperPlugin == "org.kde.image") {\n'
+                         '  d.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];\n'
+                         '  d.writeConfig("Color", "' + rvb + '"); d.writeConfig("Blur", ' + ('true' if bande['mode'] == 'flou' else 'false') + '); n++; } });\n'
+                         'print(n);', attente)
+
+
+# Panneaux puis bureaux (FolderView). Places des icônes : liste [colonnes, lignes, url, colonne, ligne, …] des icônes
+# rangées en colonnes et non triées ; Plasma 6 la garde par définition d’écran (objet JSON « 1920x1080 »).
+SCRIPT_DISPOSITION = '''var o = %s, n = 0;
+panels().forEach(function (p) {
+  if (o.position) p.location = o.position;
+  if (o.hauteur) p.height = o.hauteur;
+  if (o.centree !== null) { p.alignment = o.centree ? "center" : "left"; p.lengthMode = o.centree ? "fit" : "fill"; }
+  if (o.position || o.hauteur || o.centree !== null) n++;
+});
+desktops().forEach(function (d) {
+  d.currentConfigGroup = ["General"];
+  if (o.icones !== null) d.writeConfig("iconSize", o.icones);
+  if (o.verrou !== null) d.writeConfig("locked", o.verrou);
+  if (o.places.length) {
+    var g = screenGeometry(d.screen), cols = 1, lignes = Math.max(1, Math.floor((g.height - 60) / 110)), l = [];
+    o.places.forEach(function (x) {
+      cols = Math.max(cols, x[1] + 1); lignes = Math.max(lignes, x[2] + 1);
+      ["desktop:/", o.dossier].forEach(function (b) { l.push(b + x[0], String(x[1]), String(x[2])); });
+    });
+    var v = [String(cols), String(lignes)].concat(l), avant = String(d.readConfig("positions", ""));
+    d.writeConfig("sortMode", -1); d.writeConfig("arrangement", 1);
+    if (avant.charAt(0) == "{" || (typeof applicationVersion != "undefined" && parseInt(applicationVersion) >= 6)) {
+      var j = {}; try { j = JSON.parse(avant); } catch (e) { j = {}; }
+      j[g.width + "x" + g.height] = v; d.writeConfig("positions", JSON.stringify(j));
+    } else d.writeConfig("positions", v);
+  }
+  if (o.icones !== null || o.verrou !== null || o.places.length) n++;
+});
+if (o.verrou !== null) { locked = o.verrou; n++; }
+print(n);'''
+
+
+def disposition_plasma(d: dict, places: list, dossier: str, verrou) -> bool:
+    """Panneau, icônes du bureau, verrou des éléments graphiques et thème de Plasma. `verrou` : True, False (déverrouiller
+    ce que l’agent avait verrouillé) ou None (ne pas y toucher)."""
+    b = d['barre']
+    o = {'position': POSITIONS_BARRE[b['position']][0] if b['position'] else '', 'hauteur': HAUTEUR_PANNEAU.get(b['taille'], 0),
+         'centree': b['centree'], 'icones': ICONES_PLASMA.get(d['icones']['taille']), 'verrou': verrou,
+         'places': places, 'dossier': 'file://' + dossier.rstrip('/') + '/'}
+    fait = False
+    if o['position'] or o['hauteur'] or o['centree'] is not None or o['icones'] is not None or verrou is not None or places:
+        fait = script_plasma(SCRIPT_DISPOSITION % json.dumps(o))
+    th = d['theme']
+    if th['mode']:
+        sombre = th['mode'] == 'sombre'
+        lancer(['plasma-apply-colorscheme', 'BreezeDark' if sombre else 'BreezeLight'], env=_bus())   # code 1 : déjà en place
+        lancer(['plasma-apply-desktoptheme', 'breeze-dark' if sombre else 'breeze-light'], env=_bus())
+        fait = True
+    if th['accent']:
+        lancer(['plasma-apply-colorscheme', '--accent-color', ACCENTS[th['accent']][1]], env=_bus())
+        fait = True
+    kw = outil('kwriteconfig6') or outil('kwriteconfig5')
+    if kw and verrou is not None:  # verrouillé : « Déverrouiller les éléments graphiques » refusé à l’utilisateur
+        lancer([kw, '--file', 'kdeglobals', '--group', 'KDE Action Restrictions', '--key', 'plasma/allow_configure_when_locked']
+               + (['false'] if verrou else ['--delete']))
+    return fait
+
+
+def _gsettings(schema: str, cle: str, valeur: str) -> bool:
+    return lancer(['gsettings', 'set', schema, cle, valeur], env=_bus()).returncode == 0   # schéma absent : extension non installée
+
+
+def disposition_gnome(d: dict, places: list, dossier: str) -> bool:
+    """Dock (Ubuntu Dock ou Dash to Dock), icônes du bureau (Desktop Icons NG), thème clair ou sombre et accent de GNOME."""
+    dock, ding, interface = 'org.gnome.shell.extensions.dash-to-dock', 'org.gnome.shell.extensions.ding', 'org.gnome.desktop.interface'
+    b, th, fait = d['barre'], d['theme'], False
+    if b['position']:
+        fait = _gsettings(dock, 'dock-position', POSITIONS_BARRE[b['position']][1]) or fait
+    if b['taille']:
+        fait = _gsettings(dock, 'dash-max-icon-size', str(ICONES_DOCK[b['taille']])) or fait
+    if b['centree'] is not None:  # centré : dock à la taille de son contenu ; sinon sur toute la longueur de l’écran
+        fait = _gsettings(dock, 'extend-height', 'false' if b['centree'] else 'true') or fait
+    if d['icones']['taille']:
+        fait = _gsettings(ding, 'icon-size', ICONES_DING[d['icones']['taille']]) or fait
+    if th['mode']:
+        sombre = th['mode'] == 'sombre'
+        fait = _gsettings(interface, 'color-scheme', 'prefer-dark' if sombre else 'default') or fait
+        theme = lancer(['gsettings', 'get', interface, 'gtk-theme'], env=_bus()).stdout.strip().strip("'")
+        if theme.startswith('Yaru'):  # Ubuntu : le thème GTK suit le mode, comme le fait Paramètres
+            base = theme[:-5] if theme.endswith('-dark') else theme
+            _gsettings(interface, 'gtk-theme', base + '-dark' if sombre else base)
+    if th['accent']:
+        fait = _gsettings(interface, 'accent-color', ACCENTS[th['accent']][0]) or fait
+    if places and outil('gio'):
+        taille = ICONES_DING.get(d['icones']['taille']) or lancer(['gsettings', 'get', ding, 'icon-size'], env=_bus()).stdout.strip().strip("'")
+        w, h = CASE_DING.get(taille, CASE_DING['standard'])
+        for nom, col, lig in places:  # coin de la case ; Desktop Icons NG cale l’icône sur sa grille
+            f = os.path.join(dossier, nom)
+            if os.path.exists(f):
+                lancer(['gio', 'set', f, 'metadata::nautilus-icon-position', f'{8 + col * w},{40 + lig * h}'], delai=10)
+                fait = True
+    return fait
 
 
 def epingler_gnome(ids: list[str]) -> bool:
@@ -501,6 +651,7 @@ class Profil(Extension):
         mem = ctx.f.memoire(self.nom)
         if not liste:
             mem.pop('barre', None)  # profil retiré : les épingles restent, comme sous Windows
+            self._disposition(ctx, {'disposition': disposition(None), 'bureau': []}, mem, None)
             return
         p = fusionner([x[1] for x in liste])
         g = gestionnaire()
@@ -530,6 +681,7 @@ class Profil(Extension):
             if not presente(p['apps'][i], g):
                 ctx.noter(self.nom, f"{p['apps'][i]['nom']} : pas encore installée")
         self._barre(ctx, p, lanceurs, g, mem)
+        self._disposition(ctx, p, mem, bureau)
         if p['fond'] and any(s == 'local' for s, _ in liste):
             self._fond(ctx, p['fond'], mem, p['fond_style'])
         if p['fond'] and p['fond_style'] == 3:
@@ -558,8 +710,7 @@ class Profil(Extension):
             ctx.noter(self.nom, f"bureau : {a['nom']}")
             if ctx.simuler:
                 continue
-            # numéro d’ordre dans le nom : les bureaux qui trient par nom de fichier gardent l’ordre du profil
-            fichier = os.path.join(bureau, f'linux-gpo-{n:02d}-{i}.desktop')
+            fichier = os.path.join(bureau, nom_icone(n, i))
             # exécutable et « de confiance » : sinon Plasma et GNOME refusent de lancer un lanceur posé sur le bureau
             if ctx.f.ecrire(fichier, contenu, self.nom, mode=0o755) and outil('gio'):
                 lancer(['gio', 'set', fichier, 'metadata::trusted', 'true'], delai=10)
@@ -571,8 +722,8 @@ class Profil(Extension):
         chemins = [c for c in chemins if c]
         ids = [os.path.basename(c) for c in chemins]
         ctx.noter(self.nom, 'barre des tâches : ' + ', '.join(i[:-8] for i in ids))
-        if ctx.simuler or not ids or mem.get('barre') == ids:
-            return  # posées une fois par version du profil : l’utilisateur peut ensuite les changer
+        if ctx.simuler or not ids or (mem.get('barre') == ids and not p['disposition']['verrou']):
+            return  # posées une fois par version du profil : l’utilisateur peut ensuite les changer (sauf disposition verrouillée)
         fait = False
         if outil('plasmashell'):
             # lanceurs hors des dossiers du système (Flatpak, Snap) : par leur chemin, valable dès cette session
@@ -583,6 +734,39 @@ class Profil(Extension):
             fait = epingler_gnome(ids) or fait
         if fait:
             mem['barre'] = ids
+
+    def _disposition(self, ctx, p, mem, bureau):
+        """Barre des tâches, icônes du bureau, thème : posés quand le profil change, à chaque passage s’il est verrouillé."""
+        d = p['disposition']
+        pos = d['icones']['positions']
+        places = [[nom_icone(n, i), *pos[i]] for n, i in enumerate(p['bureau']) if i in pos]
+        vide = d == disposition(None)
+        if vide and not mem.get('disposition'):
+            return
+        if not vide:
+            b, th = d['barre'], d['theme']
+            ctx.noter(self.nom, 'disposition : ' + ', '.join(x for x in (
+                b['position'] and f"barre en {b['position']}", b['taille'] and f"barre {b['taille']}",
+                b['centree'] is not None and ('icônes de la barre centrées' if b['centree'] else 'barre sur toute la longueur'),
+                d['icones']['taille'] and f"icônes {d['icones']['taille']}s", places and f'{len(places)} icône(s) placée(s)',
+                th['mode'] and f"thème {th['mode']}", th['accent'] and f"accent {th['accent']}", d['verrou'] and 'verrouillée') if x))
+        cle = json.dumps([d, places], sort_keys=True)
+        if ctx.simuler or (mem.get('disposition') == cle and not d['verrou']):
+            return
+        # verrou retiré (ou profil retiré) : on déverrouille ce que l’agent avait verrouillé, le reste du réglage demeure
+        verrou = True if d['verrou'] else (False if mem.get('verrou') else None)
+        fait = False
+        dossier = bureau or dossier_bureau()
+        if outil('plasmashell'):
+            fait = disposition_plasma(d, places, dossier, verrou) or fait
+        if outil('gnome-shell') and outil('gsettings'):
+            fait = disposition_gnome(d, places, dossier) or fait
+        if fait or vide:
+            mem['verrou'] = d['verrou']
+            if vide:
+                mem.pop('disposition', None)
+            else:
+                mem['disposition'] = cle
 
     def _bandes(self, ctx, bande, mem):
         """Bandes de l’affichage « Ajuster » : couleur unie, ou couleurs de l’image prolongées (flou de Plasma ; GNOME n’a que la

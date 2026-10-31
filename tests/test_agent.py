@@ -332,6 +332,71 @@ class ProfilBureau(unittest.TestCase):
             charge = self.p.charger(self.f)['fond_bande']
             self.assertEqual((charge['mode'], charge['couleur']), attendu, valeur)
 
+    def test_disposition(self):
+        dispo = {'barre': {'position': 'gauche', 'taille': 'enorme', 'centree': True},
+                 'icones': {'taille': 'grande', 'libre': True,
+                            'positions': {'std-vlc': [0, 1], 'partage-rh': [0, 1], 'inconnue': [1, 1], 'web-intranet': [99, 0], 'std-firefox': [2, 0]}},
+                 'theme': {'mode': 'sombre', 'accent': 'fuchsia'}, 'verrou': 'oui'}
+        with open(self.f, 'w', encoding='utf-8') as fh:
+            json.dump({**self.PROFIL, 'disposition': dispo}, fh)
+        d = self.p.charger(self.f)['disposition']
+        self.assertEqual(d['barre'], {'position': 'gauche', 'taille': '', 'centree': True})
+        self.assertEqual(d['icones']['positions'], {'std-vlc': [0, 1], 'std-firefox': [2, 0]})   # une icône par case, sur le bureau
+        self.assertEqual(d['icones']['taille'], 'grande')
+        self.assertEqual(d['theme'], {'mode': 'sombre', 'accent': ''})
+        self.assertFalse(d['verrou'])                                                            # vrai booléen seulement
+        vide = self.p.disposition(None)
+        self.assertEqual(self.p.fusionner_disposition([]), vide)
+        a = {**vide, 'barre': {'position': 'haut', 'taille': 'petite', 'centree': None}, 'verrou': True}
+        b = self.p.disposition({'barre': {'position': 'bas'}, 'theme': {'mode': 'clair'}})
+        r = self.p.fusionner_disposition([a, b])
+        self.assertEqual((r['barre']['position'], r['barre']['taille'], r['theme']['mode'], r['verrou']), ('bas', 'petite', 'clair', True))
+
+    def test_disposition_appliquee_par_la_session(self):
+        from unittest import mock
+        from types import SimpleNamespace
+        from linux_gpo.fichiers import Fichiers
+        bureau = os.path.join(self.d, 'Bureau')
+        dispo = {'barre': {'position': 'haut', 'taille': 'grande', 'centree': True}, 'theme': {'mode': 'sombre', 'accent': 'vert'},
+                 'icones': {'taille': 'petite', 'libre': True, 'positions': {'web-intranet': [3, 2]}}, 'verrou': True}
+        with open(self.f, 'w', encoding='utf-8') as fh:
+            json.dump({**self.PROFIL, 'barre': [], 'installer': [], 'disposition': dispo}, fh)
+        g = SimpleNamespace(guid='{11111111-2222-3333-4444-555555555555}')
+        pol = SimpleNamespace(fichiers=lambda rel: [(g, self.f)] if rel == self.p.FICHIER else [], fichier=lambda *a: None)
+        ctx = cli.Contexte(conf=Conf(domaine='exemple.local'), pol=pol, f=Fichiers(os.path.join(self.d, 'etat')), noms=None,
+                           utilisateur='jdupont')
+        scripts, commandes = [], []
+        objet = lambda s: json.loads(s.split('var o = ', 1)[1].split(', n = 0;', 1)[0])
+
+        def lancer(cmd, **k):
+            commandes.append(cmd)
+            return SimpleNamespace(returncode=0, stdout='', stderr='')
+        with mock.patch.object(self.p, '_lanceurs', return_value={}), \
+                mock.patch.object(self.p, 'dossier_bureau', return_value=bureau), \
+                mock.patch.object(self.p, 'presente', return_value=True), \
+                mock.patch.object(self.p, 'outil', side_effect=lambda n: n in ('plasmashell', 'kwriteconfig6')), \
+                mock.patch.object(self.p, 'script_plasma', side_effect=lambda s, *a: scripts.append(s) or True), \
+                mock.patch.object(self.p, 'lancer', side_effect=lancer), \
+                mock.patch.object(self.p, 'chemin', return_value=os.path.join(self.d, 'absent')), \
+                mock.patch('linux_gpo.ext.logiciels.gestionnaire', return_value=None):
+            self.p.Profil().appliquer(ctx)
+            o = objet(scripts[0])
+            self.assertEqual((o['position'], o['hauteur'], o['centree'], o['icones'], o['verrou']), ('top', 56, True, 2, True))
+            self.assertEqual(o['places'], [['linux-gpo-03-web-intranet.desktop', 3, 2]])
+            self.assertIn(['plasma-apply-colorscheme', 'BreezeDark'], commandes)
+            self.assertIn(['plasma-apply-colorscheme', '--accent-color', '#3a944a'], commandes)
+            self.assertIn('plasma/allow_configure_when_locked', commandes[-1])
+            self.assertEqual(commandes[-1][-1], 'false')
+            self.p.Profil().appliquer(ctx)   # verrouillée : reposée à chaque passage
+            self.assertEqual(len(scripts), 2)
+            with open(self.f, 'w', encoding='utf-8') as fh:
+                json.dump({**self.PROFIL, 'barre': [], 'installer': [], 'disposition': {**dispo, 'verrou': False}}, fh)
+            self.p.Profil().appliquer(ctx)   # verrou retiré : déverrouillage, puis plus rien tant que le profil ne change pas
+            self.assertIs(objet(scripts[2])['verrou'], False)
+            self.assertEqual(commandes[-1][-1], '--delete')
+            self.p.Profil().appliquer(ctx)
+            self.assertEqual(len(scripts), 3)
+
     def test_github_derniere_version(self):
         from linux_gpo.ext import logiciels
         noms = ['SHA256SUMS.txt', 'x-1-linux-aarch64.deb', 'x-1-linux-x86_64.deb', 'x-1-linux-x86_64.AppImage', 'x-1-linux-x86_64.rpm']
