@@ -315,11 +315,21 @@ class ProfilBureau(unittest.TestCase):
         with open(self.f, 'w', encoding='utf-8') as fh:
             json.dump(self.PROFIL, fh)
 
+    def test_affichage_du_fond(self):
+        for valeur, attendu in ((0, 0), (3, 3), (5, 5), (6, 4), (-1, 4), ('2', 4), (True, 4), (None, 4)):
+            with open(self.f, 'w', encoding='utf-8') as fh:
+                json.dump({**self.PROFIL, 'fondStyle': valeur}, fh)
+            self.assertEqual(self.p.charger(self.f)['fond_style'], attendu, valeur)
+        a = {'apps': {}, 'bureau': [], 'barre': [], 'installer': [], 'fond': '/x/a.png', 'fond_style': 3}
+        b = {**a, 'fond': '', 'fond_style': 0}
+        self.assertEqual(self.p.fusionner([a, b])['fond_style'], 3)   # le style suit l’image : un profil sans fond ne le change pas
+
     def test_lecture_et_choix_de_l_installateur(self):
         p = self.p.charger(self.f)
         self.assertEqual(sorted(p['apps']), ['partage-rh', 'pirate', 'std-7zip', 'std-firefox', 'std-vlc', 'web-intranet'])
         self.assertEqual(p['apps']['pirate']['installateurs'], [])   # nom de paquet invalide : ignoré
         self.assertEqual(p['fond'], '')                               # chemin hors du dossier du profil : refusé
+        self.assertEqual(p['fond_style'], 4)                          # sans affichage indiqué : remplir
         self.assertEqual(p['barre'], ['std-firefox', 'std-vlc'])      # seules des applications s’épinglent
         self.assertEqual(p['bureau'], ['std-firefox', 'partage-rh', 'std-vlc', 'web-intranet'])
         self.assertEqual(self.p.utiles(p), ['std-firefox', 'std-vlc', 'std-7zip'])

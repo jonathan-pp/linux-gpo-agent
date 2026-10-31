@@ -44,6 +44,24 @@ class ErreurAgent(Exception):
     pass
 
 
+# Affichage du fond d’écran : numéros du réglage « Style du papier peint » des GPO (WallpaperStyle) →
+# valeur GNOME (picture-options) et mode de remplissage de Plasma. 4 = remplir en rognant.
+STYLES_GNOME = ['centered', 'wallpaper', 'stretched', 'scaled', 'zoom', 'spanned']
+MODES_PLASMA = ['pad', 'tile', 'stretch', 'preserveAspectFit', 'preserveAspectCrop', 'preserveAspectCrop']
+STYLE_FOND = 4
+
+
+def style_fond(valeur) -> int:
+    return valeur if isinstance(valeur, int) and not isinstance(valeur, bool) and 0 <= valeur < len(STYLES_GNOME) else STYLE_FOND
+
+
+def fond_plasma(image: str, style: int, env: dict | None = None) -> None:
+    """Fond d’écran de Plasma avec son mode d’affichage ; une version de Plasma sans --fill-mode garde l’image seule."""
+    r = lancer(['plasma-apply-wallpaperimage', '--fill-mode', MODES_PLASMA[style_fond(style)], image], env=env)
+    if r.returncode:
+        lancer(['plasma-apply-wallpaperimage', image], env=env)
+
+
 def os_release() -> dict:
     infos = {}
     for f in ('/etc/os-release', '/usr/lib/os-release'):

@@ -42,7 +42,7 @@ import time
 from . import Extension
 from .raccourcis import _lanceurs, dossier_bureau, trouver_application
 from ..annuaire import un
-from ..systeme import chemin, lancer, os_release, outil
+from ..systeme import STYLES_GNOME, chemin, fond_plasma, lancer, os_release, outil, style_fond
 
 journal = logging.getLogger('linux-gpo')
 
@@ -114,7 +114,7 @@ def charger(f: str) -> dict | None:
     if fond and (os.sep in fond or fond.startswith('.') or not re.match(r'^[\w.-]+\.(png|jpe?g|svg|webp)$', fond, re.I)):
         fond = ''
     return {'nom': str(d.get('nom') or '')[:120], 'apps': apps, 'bureau': bureau, 'barre': barre, 'installer': installer,
-            'fond': os.path.join(os.path.dirname(f), fond) if fond else ''}
+            'fond': os.path.join(os.path.dirname(f), fond) if fond else '', 'fond_style': style_fond(d.get('fondStyle'))}
 
 
 def profils(ctx) -> list[tuple[str, dict]]:
@@ -132,14 +132,15 @@ def profils(ctx) -> list[tuple[str, dict]]:
 
 def fusionner(liste: list[dict]) -> dict:
     """Icônes et applications : celles de tous les profils ; barre et fond : le dernier profil qui en définit l’emporte."""
-    apps, bureau, barre, installer, fond = {}, [], [], [], ''
+    apps, bureau, barre, installer, fond, style = {}, [], [], [], '', style_fond(None)
     for p in liste:
         apps.update(p['apps'])
         bureau += [i for i in p['bureau'] if i not in bureau]
         installer += [i for i in p['installer'] if i not in installer]
         barre = p['barre'] or barre
-        fond = p['fond'] or fond
-    return {'apps': apps, 'bureau': bureau, 'barre': barre, 'installer': installer, 'fond': fond}
+        if p['fond']:
+            fond, style = p['fond'], p['fond_style']
+    return {'apps': apps, 'bureau': bureau, 'barre': barre, 'installer': installer, 'fond': fond, 'fond_style': style}
 
 
 def utiles(p: dict) -> list[str]:
@@ -454,7 +455,7 @@ class Profil(Extension):
                 ctx.noter(self.nom, f"{p['apps'][i]['nom']} : pas encore installée")
         self._barre(ctx, p, lanceurs, g, mem)
         if p['fond'] and any(s == 'local' for s, _ in liste):
-            self._fond(ctx, p['fond'], mem)
+            self._fond(ctx, p['fond'], mem, p['fond_style'])
 
     def _bureau(self, ctx, p, lanceurs, g, bureau):
         perso = None
@@ -505,21 +506,22 @@ class Profil(Extension):
         if fait:
             mem['barre'] = ids
 
-    def _fond(self, ctx, image, mem):
+    def _fond(self, ctx, image, mem, style=4):
         """Fond d’écran du profil local (sur un poste du domaine, la GPO porte le fond par le réglage Windows)."""
         if ctx.simuler or not os.path.exists(image):
             return
         dest = os.path.expanduser('~/.cache/linux-gpo/fond-profil' + os.path.splitext(image)[1].lower())
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         shutil.copyfile(image, dest)
-        empreinte = [os.path.getsize(dest), int(os.path.getmtime(image))]
+        empreinte = [os.path.getsize(dest), int(os.path.getmtime(image)), style_fond(style)]
         if mem.get('fond') == empreinte:
             return
         if outil('plasma-apply-wallpaperimage'):
-            lancer(['plasma-apply-wallpaperimage', dest], env=_bus())
+            fond_plasma(dest, style, env=_bus())
         if outil('gsettings'):
             for cle in ('picture-uri', 'picture-uri-dark'):
                 lancer(['gsettings', 'set', 'org.gnome.desktop.background', cle, 'file://' + dest], env=_bus())
+            lancer(['gsettings', 'set', 'org.gnome.desktop.background', 'picture-options', STYLES_GNOME[style_fond(style)]], env=_bus())
         mem['fond'] = empreinte
 
 

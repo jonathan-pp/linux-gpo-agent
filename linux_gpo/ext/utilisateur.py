@@ -17,12 +17,11 @@ import xml.etree.ElementTree as ET
 
 from . import K_LGPO, K_WIN_EXPL, K_WIN_SYS, Extension, entier, vrai
 from ..annuaire import echapper_filtre, un
-from ..systeme import ErreurAgent, lancer, outil
+from ..systeme import STYLES_GNOME, ErreurAgent, fond_plasma, lancer, outil, style_fond
 
 K_DESK = r'Software\Policies\Microsoft\Windows\Control Panel\Desktop'
 K_CMD = r'Software\Policies\Microsoft\Windows\System'
 DRIVES = 'USER/Preferences/Drives/Drives.xml'
-STYLES_GNOME = ['centered', 'wallpaper', 'stretched', 'scaled', 'zoom', 'spanned']
 
 
 def _maison(p: str) -> str:
@@ -63,13 +62,13 @@ class BureauUtilisateur(Extension):
             image = self._image(ctx, r['fond'][0])
             if image:
                 uri = "'file://" + image + "'"
-                style = "'" + STYLES_GNOME[r['fond'][1] if 0 <= r['fond'][1] < 6 else 4] + "'"
+                style = "'" + STYLES_GNOME[style_fond(r['fond'][1])] + "'"
                 cles.update({'/org/gnome/desktop/background/picture-uri': uri, '/org/gnome/desktop/background/picture-uri-dark': uri,
                              '/org/gnome/desktop/background/picture-options': style, '/org/cinnamon/desktop/background/picture-uri': uri,
                              '/org/mate/desktop/background/picture-filename': "'" + image + "'"})
-                if outil('plasma-apply-wallpaperimage') and not ctx.simuler and mem.get('fond_kde') != image:
-                    lancer(['plasma-apply-wallpaperimage', image])
-                    mem['fond_kde'] = image
+                if outil('plasma-apply-wallpaperimage') and not ctx.simuler and mem.get('fond_kde') != f'{image}|{style_fond(r["fond"][1])}':
+                    fond_plasma(image, r['fond'][1])
+                    mem['fond_kde'] = f'{image}|{style_fond(r["fond"][1])}'
         for k, v in r.items():
             ctx.noter(self.nom, f'{k} : {v[0] if isinstance(v, tuple) else "oui" if v is True else v}')
         if ctx.simuler:
