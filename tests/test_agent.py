@@ -117,6 +117,25 @@ class Ordre(unittest.TestCase):
         objets[f'CN={B},CN=Policies,CN=System,{base}']['flags'] = [b'2']
         self.assertEqual([x.nom for x in liste(a, compte)], ['A', 'C', 'D', 'F'])
 
+    def test_boucle_de_rappel(self):
+        from linux_gpo.gpo import bouclage
+        base = 'DC=exemple,DC=local'
+        A, P, U = ['{%s}' % str(uuid.UUID(int=i)).upper() for i in range(1, 4)]
+        objets = {base: {'gplink': [lien(A).encode()]},
+                  'OU=Postes,' + base: {'gplink': [lien(P).encode()]},
+                  'OU=Gens,' + base: {'gplink': [lien(U).encode()]}}
+        for guid, nom in ((A, 'A'), (P, 'Profil'), (U, 'U')):
+            objets[f'CN={guid},CN=Policies,CN=System,{base}'] = g(guid, nom)
+        a = FauxAnnuaire(objets)
+        u = Compte('CN=Jean Dupont,OU=Gens,' + base, 'S-1-5-21-1-2-3-1106', False, {sid.UTILISATEURS_AUTHENTIFIES})
+        # sans boucle de rappel, la GPO de l’OU des postes ne touche pas l’utilisateur
+        self.assertEqual([x.nom for x in liste(a, u)], ['A', 'U'])
+        self.assertEqual([x.nom for x in bouclage(a, u, 'CN=PC1,OU=Postes,' + base, 1)], ['U', 'A', 'Profil'])
+        self.assertEqual([x.nom for x in bouclage(a, u, 'CN=PC1,OU=Postes,' + base, 2)], ['A', 'Profil'])
+        # partie utilisateur désactivée : ignorée aussi en boucle de rappel
+        objets[f'CN={P},CN=Policies,CN=System,{base}']['flags'] = [b'1']
+        self.assertEqual([x.nom for x in bouclage(a, u, 'CN=PC1,OU=Postes,' + base, 2)], ['A'])
+
 
 class Application(unittest.TestCase):
     """Application complète dans une racine de test (aucune commande système n’est lancée)."""

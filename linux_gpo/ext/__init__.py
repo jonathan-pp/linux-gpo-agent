@@ -56,14 +56,14 @@ class Extension:
 
 
 def extensions(machine: bool = True) -> list[Extension]:
-    from . import (acces, bureau, deploiement, heure, laps, logiciels, messages, mises_a_jour, navigateurs, parefeu,
+    from . import (acces, bouclage, bureau, deploiement, heure, laps, logiciels, messages, mises_a_jour, navigateurs, parefeu,
                    permissions, profil, raccourcis, scripts, ssh, sudo, utilisateur)
     if not machine:
         return [utilisateur.BureauUtilisateur(), utilisateur.Lecteurs(), raccourcis.Raccourcis(), profil.Profil(),
                 utilisateur.ScriptsSession()]
     return [messages.Messages(), sudo.Sudo(), acces.Acces(), ssh.Ssh(), parefeu.Parefeu(), scripts.Scripts(),
             deploiement.Deploiement(), navigateurs.Navigateurs(), bureau.Bureau(), permissions.Permissions(),
-            mises_a_jour.MisesAJour(), logiciels.Logiciels(), heure.Heure(), laps.Laps()]
+            mises_a_jour.MisesAJour(), logiciels.Logiciels(), heure.Heure(), laps.Laps(), bouclage.Bouclage()]
 
 
 def vrai(v) -> bool:

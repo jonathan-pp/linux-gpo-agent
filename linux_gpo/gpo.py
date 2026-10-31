@@ -161,3 +161,13 @@ def liste(a: Annuaire, c: Compte, filtres_wmi: str = 'exclure') -> list[Gpo]:
         vus.add(guid)
         res.append(g)
     return res
+
+
+def bouclage(a: Annuaire, c: Compte, dn_poste: str, mode: int, filtres_wmi: str = 'exclure') -> list[Gpo]:
+    """Boucle de rappel (UserPolicyMode) : la partie utilisateur des GPO liées aux conteneurs de l’ordinateur, filtrées
+    avec le jeton de l’utilisateur. 1 fusionner : après celles de l’utilisateur (elles l’emportent) ; 2 remplacer : seules."""
+    poste = liste(a, Compte(dn_poste, c.sid, False, c.jeton), filtres_wmi)
+    if mode == 2:
+        return poste
+    guids = {g.guid for g in poste}
+    return [g for g in liste(a, c, filtres_wmi) if g.guid not in guids] + poste

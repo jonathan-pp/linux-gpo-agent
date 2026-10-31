@@ -170,6 +170,23 @@ def _ccache_session() -> str | None:
     return 'FILE:' + max(candidats)[1] if candidats else None
 
 
+def _liste_utilisateur(a: Annuaire, c, compte) -> list[Gpo]:
+    """GPO de l’utilisateur ; avec la boucle de rappel (posée par le passage de l’ordinateur), aussi celles du poste."""
+    from .annuaire import echapper_filtre
+    from .ext import bouclage
+    wmi = c.options.get('filtres_wmi', 'exclure')
+    mode = bouclage.lire()
+    if mode:
+        try:
+            r = a.chercher(c.base, f'(&(objectClass=computer)(sAMAccountName={echapper_filtre(c.compte)}))', ['cn'], portee='sub')
+            if r:
+                return gpos_mod.bouclage(a, compte, r[0]['dn'], mode, wmi)
+            journal.warning('boucle de rappel : compte de l’ordinateur %s introuvable', c.compte)
+        except ErreurAgent as e:
+            journal.warning('boucle de rappel : %s', e)
+    return gpos_mod.liste(a, compte, wmi)
+
+
 def utilisateur(args) -> int:
     c = configuration.charger()
     nom = getpass.getuser()
@@ -188,7 +205,7 @@ def utilisateur(args) -> int:
         pass
     a = Annuaire(c, _ccache_session())  # ticket de la session de l’utilisateur
     compte = gpos_mod.compte(a, sam, False)
-    liste = gpos_mod.liste(a, compte, c.options.get('filtres_wmi', 'exclure'))
+    liste = _liste_utilisateur(a, c, compte)
     copier_sysvol(a, liste, False, cache)
     pol = Politique(liste, False)
     f = Fichiers(etat, args.simuler)
