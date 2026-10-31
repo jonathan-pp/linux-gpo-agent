@@ -10,6 +10,7 @@
 Ces réglages sont ceux de l’utilisateur : il pourrait les modifier, mais ils sont remis à chaque session et
 toutes les 90 minutes. Pour les imposer, utilisez les mêmes réglages côté ordinateur (verrous).
 """
+import hashlib
 import html
 import os
 import re
@@ -109,14 +110,27 @@ class BureauUtilisateur(Extension):
         if not chemin.startswith(('\\\\', '//')) or not ctx.annuaire:
             return None
         ext = os.path.splitext(chemin)[1].lower() or '.jpg'
-        dest = _maison(f'.cache/linux-gpo/fond{ext}')
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        dossier = _maison('.cache/linux-gpo')
+        os.makedirs(dossier, exist_ok=True)
+        tmp = os.path.join(dossier, 'fond.tmp')
+        anciens = [os.path.join(dossier, n) for n in os.listdir(dossier) if re.match(r'^fond(-[0-9a-f]{12})?\.\w+$', n) and n != 'fond.tmp']
         try:
-            ctx.annuaire.copier_fichier(chemin, dest + '.tmp')
-            os.replace(dest + '.tmp', dest)
+            ctx.annuaire.copier_fichier(chemin, tmp)
+            with open(tmp, 'rb') as fh:
+                empreinte = hashlib.sha256(fh.read()).hexdigest()[:12]
         except (ErreurAgent, OSError) as e:
             ctx.noter(self.nom, f'papier peint {chemin} : {e}')
-            return dest if os.path.exists(dest) else None
+            return max(anciens, key=os.path.getmtime) if anciens else None
+        # nom tiré du contenu : une nouvelle image publiée sous le même nom (fond.jpg) change le chemin, que Plasma et
+        # GNOME relisent alors
+        dest = os.path.join(dossier, f'fond-{empreinte}{ext}')
+        os.replace(tmp, dest)
+        for a in anciens:
+            if a != dest:
+                try:
+                    os.remove(a)
+                except OSError:
+                    pass
         return dest
 
 
