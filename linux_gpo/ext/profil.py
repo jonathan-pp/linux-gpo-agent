@@ -42,7 +42,7 @@ import time
 from . import Extension
 from .raccourcis import _lanceurs, dossier_bureau, trouver_application
 from ..annuaire import un
-from ..systeme import STYLES_GNOME, chemin, fond_plasma, lancer, os_release, outil, style_fond
+from ..systeme import STYLES_GNOME, bande_fond, chemin, fond_plasma, lancer, os_release, outil, style_fond
 
 journal = logging.getLogger('linux-gpo')
 
@@ -70,8 +70,10 @@ def _installateurs(a: dict) -> list[dict]:
     for i in a.get('installateurs') or []:
         if not isinstance(i, dict) or i.get('methode') not in PAQUET or not PAQUET[i['methode']].match(str(i.get('paquet') or '')):
             continue
-        res.append({'methode': i['methode'], 'paquet': i['paquet'], 'classic': bool(i.get('classic')),
-                    'distros': [d for d in i.get('distros') or [] if d in ('debian', 'ubuntu', 'arch')]})
+        distros = [d for d in i.get('distros') or [] if d in ('debian', 'ubuntu', 'arch')]
+        if (i.get('distros') and not distros) or str(i['paquet']).startswith('unstable.'):
+            continue  # attribut nixpkgs (NixOS) : un paquet de ce nom n’existe pas ailleurs
+        res.append({'methode': i['methode'], 'paquet': i['paquet'], 'classic': bool(i.get('classic')), 'distros': distros})
     if a.get('flatpak') and PAQUET['flatpak'].match(str(a['flatpak'])):  # profils de la première version
         res.append({'methode': 'flatpak', 'paquet': a['flatpak'], 'classic': False, 'distros': []})
     return res
@@ -114,7 +116,8 @@ def charger(f: str) -> dict | None:
     if fond and (os.sep in fond or fond.startswith('.') or not re.match(r'^[\w.-]+\.(png|jpe?g|svg|webp)$', fond, re.I)):
         fond = ''
     return {'nom': str(d.get('nom') or '')[:120], 'apps': apps, 'bureau': bureau, 'barre': barre, 'installer': installer,
-            'fond': os.path.join(os.path.dirname(f), fond) if fond else '', 'fond_style': style_fond(d.get('fondStyle'))}
+            'fond': os.path.join(os.path.dirname(f), fond) if fond else '', 'fond_style': style_fond(d.get('fondStyle')),
+            'fond_bande': bande_fond(d.get('fondBande'))}
 
 
 def profils(ctx) -> list[tuple[str, dict]]:
@@ -132,15 +135,15 @@ def profils(ctx) -> list[tuple[str, dict]]:
 
 def fusionner(liste: list[dict]) -> dict:
     """Icônes et applications : celles de tous les profils ; barre et fond : le dernier profil qui en définit l’emporte."""
-    apps, bureau, barre, installer, fond, style = {}, [], [], [], '', style_fond(None)
+    apps, bureau, barre, installer, fond, style, bande = {}, [], [], [], '', style_fond(None), bande_fond(None)
     for p in liste:
         apps.update(p['apps'])
         bureau += [i for i in p['bureau'] if i not in bureau]
         installer += [i for i in p['installer'] if i not in installer]
         barre = p['barre'] or barre
         if p['fond']:
-            fond, style = p['fond'], p['fond_style']
-    return {'apps': apps, 'bureau': bureau, 'barre': barre, 'installer': installer, 'fond': fond, 'fond_style': style}
+            fond, style, bande = p['fond'], p['fond_style'], p['fond_bande']
+    return {'apps': apps, 'bureau': bureau, 'barre': barre, 'installer': installer, 'fond': fond, 'fond_style': style, 'fond_bande': bande}
 
 
 def utiles(p: dict) -> list[str]:
@@ -160,8 +163,9 @@ def distribution() -> str | None:
     return None
 
 
-def choisir(app: dict, d: str | None, gestionnaire: str | None) -> dict | None:
-    """Meilleur installateur de l’application pour ce poste (ordre de PXE Deploy), None s’il n’y en a pas."""
+def candidats(app: dict, d: str | None, gestionnaire: str | None) -> list[dict]:
+    """Installateurs utilisables sur ce poste, du préféré au dernier recours (ordre de PXE Deploy)."""
+    res = []
     for m in ORDRE.get(d, ORDRE[None]):
         for i in app.get('installateurs') or []:
             if i['methode'] != m or (i['distros'] and d not in i['distros']):
@@ -170,8 +174,13 @@ def choisir(app: dict, d: str | None, gestionnaire: str | None) -> dict | None:
                 continue
             if m == 'github' and gestionnaire not in ('apt', 'pacman'):
                 continue  # .deb ou .pkg.tar.zst seulement
-            return i
-    return None
+            res.append(i)
+    return res
+
+
+def choisir(app: dict, d: str | None, gestionnaire: str | None) -> dict | None:
+    """Meilleur installateur de l’application pour ce poste, None s’il n’y en a pas."""
+    return next(iter(candidats(app, d, gestionnaire)), None)
 
 
 def _flatpak_present(paquet: str) -> bool:
@@ -306,49 +315,69 @@ def lien(nom: str, url: str, icone: str) -> str:
 
 
 def installer_apps(ctx, ext: str, apps: list[dict]) -> tuple[list[str], dict[str, str]]:
-    """Installe (root) les applications absentes avec leur meilleur installateur : (installées, {id: erreur})."""
-    from .logiciels import gestionnaire, installer, installer_flatpaks, installer_github
-    g, d = gestionnaire(), distribution()
-    faites, echecs, natifs, flatpaks, snaps, githubs = [], {}, {}, {}, {}, {}
+    """Installe (root) les applications absentes avec leur meilleur installateur, puis le suivant si celui-ci échoue (un paquet
+    qui n’existe pas dans la version de la distribution, par exemple) : (installées, {id: erreur})."""
+    from .logiciels import gestionnaire as gestionnaire_paquets
+    g, d = gestionnaire_paquets(), distribution()
+    faites, echecs, restants = [], {}, {}
     for a in apps:
         if presente(a, g):
             continue
-        i = choisir(a, d, g)
-        if i is None:
+        liste = candidats(a, d, g)
+        if not liste:
             echecs[a['id']] = f"aucun installateur pour {d or 'cette distribution'}"
             continue
-        {'native': natifs, 'flatpak': flatpaks, 'snap': snaps, 'github': githubs}[i['methode']][a['id']] = i
+        restants[a['id']] = liste
     if ctx.simuler:
-        for groupe in (natifs, flatpaks, snaps, githubs):
-            for k, i in groupe.items():
-                ctx.noter(ext, f"{k} : à installer ({i['methode']} {i['paquet']})")
+        for k, liste in restants.items():
+            ctx.noter(ext, f"{k} : à installer ({liste[0]['methode']} {liste[0]['paquet']})")
         return [], echecs
+    while restants:
+        tour = {k: liste[0] for k, liste in restants.items()}
+        ok, ratees = _installer_tour(ctx, ext, g, tour)
+        faites += ok
+        for k, msg in ratees.items():
+            restants[k].pop(0)
+            if restants[k]:
+                ctx.noter(ext, f"{k} : {tour[k]['methode']} {tour[k]['paquet']} impossible ({msg[-120:]}), essai suivant")
+            else:
+                echecs[k] = msg
+        restants = {k: v for k, v in restants.items() if k not in ok and v}
+    for k in faites:
+        ctx.noter(ext, f'{k} : installée')
+    for k, m in echecs.items():
+        ctx.noter(ext, f'{k} : ÉCHEC — {m}')
+    return faites, echecs
+
+
+def _installer_tour(ctx, ext: str, g: str | None, choix: dict[str, dict]) -> tuple[list[str], dict[str, str]]:
+    """Un installateur par application : ([installées], {id: message d’échec})."""
+    from .logiciels import installer, installer_flatpaks, installer_github
+    faites, echecs = [], {}
+    natifs = {k: i for k, i in choix.items() if i['methode'] == 'native'}
     if natifs:
-        paquets = [i['paquet'] for i in natifs.values()]
-        code, msg = installer(g, paquets)
+        code, msg = installer(g, [i['paquet'] for i in natifs.values()])
         if code:  # un nom introuvable fait échouer tout le lot : un par un pour savoir lequel
             for k, i in natifs.items():
                 code, msg = installer(g, [i['paquet']])
                 (faites.append(k) if code == 0 else echecs.__setitem__(k, msg))
         else:
             faites += list(natifs)
+    flatpaks = {k: i for k, i in choix.items() if i['methode'] == 'flatpak'}
     if flatpaks:
         rates = set(installer_flatpaks(ctx, ext, [i['paquet'] for i in flatpaks.values()]))
         for k, i in flatpaks.items():
             (echecs.__setitem__(k, 'échec Flatpak') if i['paquet'] in rates else faites.append(k))
-    for k, i in snaps.items():
-        if not outil('snap'):
-            echecs[k] = 'snapd absent'
-            continue
-        r = lancer(['snap', 'install', i['paquet']] + (['--classic'] if i['classic'] else []), delai=3600)
-        (faites.append(k) if r.returncode == 0 else echecs.__setitem__(k, (r.stderr or r.stdout).strip()[-200:]))
-    for k, i in githubs.items():
-        code, msg = installer_github(g, i['paquet'])
-        (faites.append(k) if code == 0 else echecs.__setitem__(k, msg))
-    for k in faites:
-        ctx.noter(ext, f'{k} : installée')
-    for k, m in echecs.items():
-        ctx.noter(ext, f'{k} : ÉCHEC — {m}')
+    for k, i in choix.items():
+        if i['methode'] == 'snap':
+            if not outil('snap'):
+                echecs[k] = 'snapd absent'
+                continue
+            r = lancer(['snap', 'install', i['paquet']] + (['--classic'] if i['classic'] else []), delai=3600)
+            (faites.append(k) if r.returncode == 0 else echecs.__setitem__(k, (r.stderr or r.stdout).strip()[-200:]))
+        elif i['methode'] == 'github':
+            code, msg = installer_github(g, i['paquet'])
+            (faites.append(k) if code == 0 else echecs.__setitem__(k, msg))
     return faites, echecs
 
 
@@ -413,6 +442,27 @@ def epingler_plasma(urls: list[str], attente: int = 90) -> bool:
         time.sleep(5)
 
 
+def bandes_plasma(bande: dict, attente: int = 60) -> bool:
+    """Couleur des bandes et flou du fond d’écran de chaque bureau Plasma (script du bureau)."""
+    gdbus = outil('gdbus')
+    if not gdbus:
+        return False
+    rvb = ','.join(str(int(bande['couleur'][i:i + 2], 16)) for i in (1, 3, 5))
+    script = ('var n = 0;\ndesktops().forEach(function (d) { if (d.wallpaperPlugin == "org.kde.image") {\n'
+              '  d.currentConfigGroup = ["Wallpaper", "org.kde.image", "General"];\n'
+              '  d.writeConfig("Color", "' + rvb + '"); d.writeConfig("Blur", ' + ('true' if bande['mode'] == 'flou' else 'false') + '); n++; } });\n'
+              'print(n);')
+    fin = time.time() + attente
+    while True:
+        r = lancer([gdbus, 'call', '--session', '--dest', 'org.kde.plasmashell', '--object-path', '/PlasmaShell',
+                    '--method', 'org.kde.PlasmaShell.evaluateScript', script], env=_bus(), delai=30)
+        if r.returncode == 0:
+            return not re.search(r"'0'|\(''", r.stdout)
+        if time.time() > fin:
+            return False
+        time.sleep(5)
+
+
 def epingler_gnome(ids: list[str]) -> bool:
     if not outil('gsettings'):
         return False
@@ -463,6 +513,8 @@ class Profil(Extension):
         self._barre(ctx, p, lanceurs, g, mem)
         if p['fond'] and any(s == 'local' for s, _ in liste):
             self._fond(ctx, p['fond'], mem, p['fond_style'])
+        if p['fond'] and p['fond_style'] == 3:
+            self._bandes(ctx, p['fond_bande'], mem)  # poste du domaine ou non : l’image et le mode viennent de la GPO ou du profil local
 
     def _bureau(self, ctx, p, lanceurs, g, bureau):
         perso = None
@@ -512,6 +564,21 @@ class Profil(Extension):
             fait = epingler_gnome(ids) or fait
         if fait:
             mem['barre'] = ids
+
+    def _bandes(self, ctx, bande, mem):
+        """Bandes de l’affichage « Ajuster » : couleur unie, ou couleurs de l’image prolongées (flou de Plasma ; GNOME n’a que la
+        couleur unie, la couleur choisie y sert de repli)."""
+        cle = [bande['mode'], bande['couleur']]
+        if ctx.simuler or mem.get('bande') == cle:
+            return
+        fait = False
+        if outil('plasmashell'):
+            fait = bandes_plasma(bande) or fait
+        if outil('gsettings'):
+            for k, v in (('color-shading-type', 'solid'), ('primary-color', bande['couleur'])):
+                fait = lancer(['gsettings', 'set', 'org.gnome.desktop.background', k, v], env=_bus()).returncode == 0 or fait
+        if fait:
+            mem['bande'] = cle
 
     def _fond(self, ctx, image, mem, style=4):
         """Fond d’écran du profil local (sur un poste du domaine, la GPO porte le fond par le réglage Windows)."""

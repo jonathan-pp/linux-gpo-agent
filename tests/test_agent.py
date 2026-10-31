@@ -320,9 +320,17 @@ class ProfilBureau(unittest.TestCase):
             with open(self.f, 'w', encoding='utf-8') as fh:
                 json.dump({**self.PROFIL, 'fondStyle': valeur}, fh)
             self.assertEqual(self.p.charger(self.f)['fond_style'], attendu, valeur)
-        a = {'apps': {}, 'bureau': [], 'barre': [], 'installer': [], 'fond': '/x/a.png', 'fond_style': 3}
-        b = {**a, 'fond': '', 'fond_style': 0}
-        self.assertEqual(self.p.fusionner([a, b])['fond_style'], 3)   # le style suit l’image : un profil sans fond ne le change pas
+        a = {'apps': {}, 'bureau': [], 'barre': [], 'installer': [], 'fond': '/x/a.png', 'fond_style': 3,
+             'fond_bande': {'mode': 'flou', 'couleur': '#112233'}}
+        b = {**a, 'fond': '', 'fond_style': 0, 'fond_bande': {'mode': 'couleur', 'couleur': '#000000'}}
+        r = self.p.fusionner([a, b])
+        self.assertEqual((r['fond_style'], r['fond_bande']['mode']), (3, 'flou'))   # le style et les bandes suivent l’image
+        for valeur, attendu in ((None, ('couleur', '#000000')), ({'mode': 'flou', 'couleur': '#ABCDEF'}, ('flou', '#abcdef')),
+                                ({'mode': 'x', 'couleur': 'rouge'}, ('couleur', '#000000')), ('flou', ('couleur', '#000000'))):
+            with open(self.f, 'w', encoding='utf-8') as fh:
+                json.dump({**self.PROFIL, 'fondBande': valeur}, fh)
+            charge = self.p.charger(self.f)['fond_bande']
+            self.assertEqual((charge['mode'], charge['couleur']), attendu, valeur)
 
     def test_github_derniere_version(self):
         from linux_gpo.ext import logiciels
@@ -353,6 +361,42 @@ class ProfilBureau(unittest.TestCase):
         self.assertIsNone(self.p.choisir(app, 'debian', 'dnf'))     # ni .deb ni .pkg.tar.zst
         flat = {**app, 'installateurs': [*app['installateurs'], {'methode': 'flatpak', 'paquet': 'org.x.Y', 'classic': False, 'distros': []}]}
         self.assertEqual(self.p.choisir(flat, 'debian', 'apt')['methode'], 'flatpak')   # GitHub en dernier
+
+    def test_attribut_nixos_ignore_et_repli_sur_l_installateur_suivant(self):
+        profil = {**self.PROFIL, 'apps': [{'id': 'pdfcraft', 'nom': 'PdfCraft', 'type': 'appli', 'installateurs': [
+            {'methode': 'native', 'paquet': 'unstable.pdfcraft', 'distros': []},                 # attribut nixpkgs, sans distribution
+            {'methode': 'native', 'paquet': 'pdfcraft', 'distros': ['nixos']},                    # distribution inconnue de l’agent
+            {'methode': 'snap', 'paquet': 'pdfcraft', 'distros': ['ubuntu']},
+            {'methode': 'github', 'paquet': 'storytold/pdfcraft', 'distros': ['debian', 'ubuntu', 'arch']}]}]}
+        with open(self.f, 'w', encoding='utf-8') as fh:
+            json.dump(profil, fh)
+        app = self.p.charger(self.f)['apps']['pdfcraft']
+        self.assertEqual([(i['methode'], i['paquet']) for i in app['installateurs']], [('snap', 'pdfcraft'), ('github', 'storytold/pdfcraft')])
+        self.assertEqual([i['methode'] for i in self.p.candidats(app, 'debian', 'apt')], ['github'])
+        self.assertEqual([i['methode'] for i in self.p.candidats(app, 'ubuntu', 'apt')], ['snap', 'github'])
+        # le premier installateur échoue : le suivant est essayé
+        deux = {'id': 'x', 'nom': 'X', 'type': 'appli', 'installateurs': [
+            {'methode': 'native', 'paquet': 'x', 'classic': False, 'distros': []}, {'methode': 'github', 'paquet': 'a/x', 'classic': False, 'distros': []}]}
+        essais = []
+
+        def tour(ctx, ext, g, choix):
+            essais.extend(i['methode'] for i in choix.values())
+            return ([k for k, i in choix.items() if i['methode'] == 'github'], {k: 'introuvable' for k, i in choix.items() if i['methode'] == 'native'})
+
+        class Ctx:
+            simuler = False
+
+            def noter(self, *a):
+                pass
+        sauve = (self.p.presente, self.p.distribution, self.p._installer_tour)
+        self.addCleanup(lambda: [setattr(self.p, n, v) for n, v in zip(('presente', 'distribution', '_installer_tour'), sauve)])
+        self.p.presente, self.p.distribution, self.p._installer_tour = (lambda a, g: False), (lambda: 'debian'), tour
+        from linux_gpo.ext import logiciels
+        sauve_g = logiciels.gestionnaire
+        self.addCleanup(setattr, logiciels, 'gestionnaire', sauve_g)
+        logiciels.gestionnaire = lambda: 'apt'
+        faites, echecs = self.p.installer_apps(Ctx(), 'profil', [{**deux, 'installateurs': [{**i, 'distros': []} for i in deux['installateurs']]}])
+        self.assertEqual((faites, echecs, essais), (['x'], {}, ['native', 'github']))
 
     def test_lecture_et_choix_de_l_installateur(self):
         p = self.p.charger(self.f)

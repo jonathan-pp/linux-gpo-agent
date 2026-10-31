@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import subprocess
 
@@ -53,6 +54,14 @@ STYLE_FOND = 4
 
 def style_fond(valeur) -> int:
     return valeur if isinstance(valeur, int) and not isinstance(valeur, bool) and 0 <= valeur < len(STYLES_GNOME) else STYLE_FOND
+
+
+def bande_fond(valeur) -> dict:
+    """Bandes de l’affichage « ajuster » : {mode: 'couleur'|'flou', couleur: '#rrggbb'} (noir uni sans indication valable)."""
+    v = valeur if isinstance(valeur, dict) else {}
+    couleur = v.get('couleur')
+    return {'mode': 'flou' if v.get('mode') == 'flou' else 'couleur',
+            'couleur': couleur.lower() if isinstance(couleur, str) and re.fullmatch(r'#[0-9a-fA-F]{6}', couleur) else '#000000'}
 
 
 def fond_plasma(image: str, style: int, env: dict | None = None) -> None:
