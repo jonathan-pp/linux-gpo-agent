@@ -91,6 +91,16 @@ class Annuaire:
             raise ErreurAgent(f'LDAP ({self.serveur}) : {(r.stderr or r.stdout).strip()[-300:]}')
         return ldif(r.stdout)
 
+    def modifier(self, dn: str, valeurs: list[tuple[str, str]]) -> None:
+        """Remplace des attributs d’un objet. Valeurs passées par l’entrée standard (jamais sur la ligne de commande) et
+        connexion chiffrée exigée (minssf) : elles peuvent être secrètes (LAPS)."""
+        b64 = lambda t: base64.b64encode(t.encode('utf-8')).decode('ascii')
+        texte = f'dn:: {b64(dn)}\nchangetype: modify\n' + '-\n'.join(f'replace: {a}\n{a}:: {b64(v)}\n' for a, v in valeurs) + '-\n'
+        r = lancer(['ldapmodify', '-Q', '-Y', 'GSSAPI', '-O', 'minssf=56', '-o', 'nettimeout=15', '-H', f'ldap://{self.controleur()}'],
+                   entree=texte, env=self.env, delai=60)
+        if r.returncode:
+            raise ErreurAgent(f'LDAP ({self.serveur}) : {(r.stderr or r.stdout).strip()[-300:]}')
+
     # ------------------------------------------------------------ SYSVOL
     def _smb(self, partage: str, commandes: str, dossier: str = '') -> str:
         hote = self.controleur()

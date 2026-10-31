@@ -571,5 +571,90 @@ class ProfilBureau(unittest.TestCase):
         self.assertEqual(os.listdir(d), [])
 
 
+class Laps(unittest.TestCase):
+    DN = 'CN=PC01,CN=Computers,DC=exemple,DC=local'
+
+    def setUp(self):
+        from linux_gpo.ext import laps
+        from linux_gpo.fichiers import Fichiers
+        self.l = laps
+        self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d)
+        self.f = Fichiers(os.path.join(self.d, 'etat'))
+
+    def contexte(self, valeurs, expiration=None, ecriture=None):
+        from types import SimpleNamespace
+        objet = {'dn': self.DN, **({'ms-mcs-admpwdexpirationtime': [expiration.encode()]} if expiration else {})}
+        ecrits = []
+
+        class Annuaire:
+            def chercher(self, base, filtre, attrs=None, portee='base'):
+                return [objet] if 'PC01$' in filtre else []
+
+            def modifier(self, dn, v):
+                if ecriture:
+                    raise ecriture
+                ecrits.append((dn, dict(v)))
+        pol = SimpleNamespace(valeur=lambda cle, nom: valeurs.get(nom) if cle == self.l.K else None)
+        ctx = SimpleNamespace(pol=pol, annuaire=Annuaire(), conf=SimpleNamespace(base='DC=exemple,DC=local', compte='PC01$'),
+                              f=self.f, simuler=False, rapport={}, noter=lambda e, t: ctx.rapport.setdefault(e, []).append(t))
+        return ctx, ecrits
+
+    def test_mot_de_passe(self):
+        for longueur, complexite in ((8, 1), (14, 3), (64, 4)):
+            p = self.l.generer(longueur, complexite)
+            self.assertEqual(len(p), longueur)
+            self.assertTrue(any(c.isdigit() for c in p) if complexite >= 3 else not any(c.isdigit() for c in p))
+            self.assertFalse(set(p) & set('"\'\\: '))
+        t = 1_800_000_000.0
+        self.assertAlmostEqual(self.l.depuis_filetime(self.l.vers_filetime(t)), t, places=3)
+        self.assertTrue(self.l.a_renouveler(None, 30, t))
+        self.assertTrue(self.l.a_renouveler(t - 1, 30, t))                       # expiré
+        self.assertFalse(self.l.a_renouveler(t + 86400, 30, t))
+        self.assertTrue(self.l.a_renouveler(t + 60 * 86400, 30, t))             # durée de vie raccourcie depuis
+        self.assertIsNone(self.l.reglage(type('P', (), {'valeur': lambda s, k, n: None})()))
+
+    def test_annuaire_d_abord_puis_le_poste(self):
+        from unittest import mock
+        from types import SimpleNamespace
+        ctx, ecrits = self.contexte({'AdmPwdEnabled': 1, 'PasswordLength': 20, 'PasswordAgeDays': 7})
+        commandes = []
+        lancer = lambda cmd, entree=None, **k: commandes.append((cmd, entree)) or SimpleNamespace(returncode=0, stdout='', stderr='')
+        with mock.patch.object(self.l, 'lancer', side_effect=lancer), mock.patch.object(self.l, 'est_nixos', return_value=False):
+            self.l.Laps().appliquer(ctx)
+        (dn, v), = ecrits
+        mdp = v['ms-Mcs-AdmPwd']
+        self.assertEqual((dn, len(mdp)), (self.DN, 20))
+        self.assertAlmostEqual(self.l.depuis_filetime(v['ms-Mcs-AdmPwdExpirationTime']), __import__('time').time() + 7 * 86400, delta=60)
+        self.assertEqual(commandes, [(['chpasswd'], f'root:{mdp}\n')])            # root par défaut, mot de passe par l’entrée standard
+        self.assertNotIn(mdp, json.dumps(ctx.rapport) + json.dumps(self.f.memoire('laps')))   # ni dans le rapport, ni gardé
+        # encore valable : rien ne change
+        ctx2, ecrits2 = self.contexte({'AdmPwdEnabled': 1, 'PasswordAgeDays': 7}, v['ms-Mcs-AdmPwdExpirationTime'])
+        with mock.patch.object(self.l, 'lancer', side_effect=lancer), mock.patch.object(self.l, 'est_nixos', return_value=False):
+            self.l.Laps().appliquer(ctx2)
+        self.assertEqual((ecrits2, len(commandes)), ([], 1))
+
+    def test_annuaire_refuse_rien_ne_change_et_compte_dedie(self):
+        from unittest import mock
+        from types import SimpleNamespace
+        from linux_gpo.systeme import ErreurAgent
+        commandes = []
+        lancer = lambda cmd, entree=None, **k: commandes.append(cmd) or SimpleNamespace(returncode=0, stdout='', stderr='')
+        ctx, _ = self.contexte({'AdmPwdEnabled': 1}, ecriture=ErreurAgent('accès refusé'))
+        with mock.patch.object(self.l, 'lancer', side_effect=lancer), mock.patch.object(self.l, 'est_nixos', return_value=False):
+            self.l.Laps().appliquer(ctx)
+        self.assertEqual(commandes, [])                                              # pas de chpasswd sans l’annuaire
+        self.assertIn('mot de passe inchangé', ctx.rapport['laps'][-1])
+        ctx, ecrits = self.contexte({'AdmPwdEnabled': 1, 'AdminAccountName': 'admin-local'})
+        with mock.patch.object(self.l, 'lancer', side_effect=lancer), mock.patch.object(self.l, 'est_nixos', return_value=False), \
+                mock.patch.object(self.l, '_existe', return_value=False), mock.patch.object(self.l, 'famille', return_value='debian'):
+            self.l.Laps().appliquer(ctx)
+        self.assertEqual(commandes[0][:1] + commandes[0][-3:], ['useradd', '-G', 'sudo', 'admin-local'])
+        self.assertEqual(commandes[1], ['chpasswd'])
+        ctx, ecrits = self.contexte({'AdmPwdEnabled': 1, 'AdminAccountName': 'Administrateur'})
+        self.l.Laps().appliquer(ctx)
+        self.assertEqual(ecrits, [])                                                 # nom Windows : refusé sous Linux
+
+
 if __name__ == '__main__':
     unittest.main()
