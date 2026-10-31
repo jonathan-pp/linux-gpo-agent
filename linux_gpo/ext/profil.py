@@ -88,6 +88,7 @@ ACCENTS = {'bleu': ('blue', '#3584e4'), 'sarcelle': ('teal', '#2190a4'), 'vert':
            'orange': ('orange', '#ed5b00'), 'rouge': ('red', '#e62d42'), 'rose': ('pink', '#d56199'), 'violet': ('purple', '#9141ac'),
            'ardoise': ('slate', '#6f8396')}
 GRILLE = (30, 20)                           # colonnes, lignes : place d’une icône du bureau
+GRILLE_PLASMA = (12, 6)                     # cases visibles dans l’aperçu de la Console (bureau.js, GRILLES.kde)
 
 
 # ---------------------------------------------------------------- lecture et fusion des profils
@@ -552,10 +553,26 @@ desktops().forEach(function (d) {
   if (o.icones !== null) d.writeConfig("iconSize", o.icones);
   if (o.verrou !== null) d.writeConfig("locked", o.verrou);
   if (o.places.length) {
-    var g = screenGeometry(d.screen), cols = 1, lignes = Math.max(1, Math.floor((g.height - 60) / 110)), l = [];
+    // grille de l’écran : cases de FolderView un peu surestimées (une case de trop ferait déborder le bureau)
+    var g = screenGeometry(d.screen), px = [16, 22, 32, 48, 64, 128, 256][Number(d.readConfig("iconSize", 3))] || 48;
+    var bord = function (lieu) { var e = 0; panels().forEach(function (p) { if (p.screen == d.screen && p.location == lieu) e += p.height; }); return e; };
+    var cols = Math.max(1, Math.floor((g.width - bord("left") - bord("right") - 16) / Math.max(112, px + 64)));
+    var lignes = Math.max(1, Math.floor((g.height - bord("top") - bord("bottom") - 16) / (px + 70)));
+    var prises = {}, l = [];
     o.places.forEach(function (x) {
-      cols = Math.max(cols, x[1] + 1); lignes = Math.max(lignes, x[2] + 1);
-      ["desktop:/", o.dossier].forEach(function (b) { l.push(b + x[0], String(x[1]), String(x[2])); });
+      // case de l’aperçu : moitié gauche (haute) comptée depuis le bord gauche (haut), l’autre depuis le bord droit (bas)
+      var c = x[1] < o.grille[0] / 2 ? x[1] : cols - (o.grille[0] - x[1]), r = x[2] < o.grille[1] / 2 ? x[2] : lignes - (o.grille[1] - x[2]);
+      c = Math.min(cols - 1, Math.max(0, c)); r = Math.min(lignes - 1, Math.max(0, r));
+      var ici = null;  // case déjà prise (petit écran) : la plus proche libre
+      for (var k = 0; ici === null && k < cols + lignes; k++)
+        for (var dc = -k; dc <= k && ici === null; dc++)
+          [r + k - Math.abs(dc), r - k + Math.abs(dc)].forEach(function (rr) {
+            var cc = c + dc;
+            if (ici === null && cc >= 0 && cc < cols && rr >= 0 && rr < lignes && !prises[cc + "," + rr]) ici = [cc, rr];
+          });
+      if (ici === null) return;
+      prises[ici[0] + "," + ici[1]] = 1;
+      ["desktop:/", o.dossier].forEach(function (b) { l.push(b + x[0], String(ici[0]), String(ici[1])); });
     });
     var v = [String(cols), String(lignes)].concat(l), avant = String(d.readConfig("positions", ""));
     d.writeConfig("sortMode", -1); d.writeConfig("arrangement", 1);
@@ -570,16 +587,32 @@ if (o.verrou !== null) { locked = o.verrou; n++; }
 print(n);'''
 
 
-def disposition_plasma(d: dict, places: list, dossier: str, verrou) -> bool:
+def relancer_plasma() -> None:
+    """Relance du bureau Plasma (plasmashell seul : les fenêtres et applications ouvertes continuent). Il ne relit les
+    places des icônes qu’à son démarrage ; il enregistre en partant la configuration posée par le script."""
+    env = _bus()
+    if lancer(['systemctl', '--user', 'is-active', '--quiet', 'plasma-plasmashell.service'], env=env).returncode == 0:
+        lancer(['systemctl', '--user', 'restart', 'plasma-plasmashell.service'], env=env, delai=60)
+        return
+    quitter, demarrer = outil('kquitapp6') or outil('kquitapp5'), outil('kstart') or outil('kstart5')
+    if quitter and demarrer:
+        lancer([quitter, 'plasmashell'], env=env, delai=30)
+        lancer([demarrer, 'plasmashell'], env=env, delai=30)
+
+
+def disposition_plasma(d: dict, places: list, dossier: str, verrou, recharger: bool = False) -> bool:
     """Panneau, icônes du bureau, verrou des éléments graphiques et thème de Plasma. `verrou` : True, False (déverrouiller
-    ce que l’agent avait verrouillé) ou None (ne pas y toucher)."""
+    ce que l’agent avait verrouillé) ou None (ne pas y toucher). `recharger` : places nouvelles, bureau relancé pour les
+    montrer tout de suite."""
     b = d['barre']
     o = {'position': POSITIONS_BARRE[b['position']][0] if b['position'] else '', 'hauteur': HAUTEUR_PANNEAU.get(b['taille'], 0),
          'centree': b['centree'], 'icones': ICONES_PLASMA.get(d['icones']['taille']), 'verrou': verrou,
-         'places': places, 'dossier': 'file://' + dossier.rstrip('/') + '/'}
+         'places': places, 'dossier': 'file://' + dossier.rstrip('/') + '/', 'grille': GRILLE_PLASMA}
     fait = False
     if o['position'] or o['hauteur'] or o['centree'] is not None or o['icones'] is not None or verrou is not None or places:
         fait = script_plasma(SCRIPT_DISPOSITION % json.dumps(o))
+        if fait and places and recharger:
+            relancer_plasma()
     th = d['theme']
     if th['mode']:
         sombre = th['mode'] == 'sombre'
@@ -758,7 +791,11 @@ class Profil(Extension):
         fait = False
         dossier = bureau or dossier_bureau()
         if outil('plasmashell'):
-            fait = disposition_plasma(d, places, dossier, verrou) or fait
+            # places changées depuis le dernier passage : Plasma ne les montre qu’après une relance du bureau
+            nouvelles = bool(places) and mem.get('places_plasma') != places
+            if disposition_plasma(d, places, dossier, verrou, recharger=nouvelles):
+                fait = True
+                mem['places_plasma'] = places
         if outil('gnome-shell') and outil('gsettings'):
             fait = disposition_gnome(d, places, dossier) or fait
         if fait or vide:

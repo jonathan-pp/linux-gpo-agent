@@ -406,8 +406,12 @@ class ProfilBureau(unittest.TestCase):
             self.assertIn(['plasma-apply-colorscheme', '--accent-color', '#3a944a'], commandes)
             self.assertIn('plasma/allow_configure_when_locked', commandes[-1])
             self.assertEqual(commandes[-1][-1], 'false')
-            self.p.Profil().appliquer(ctx)   # verrouillée : reposée à chaque passage
+            relances = lambda: sum(c[:3] == ['systemctl', '--user', 'restart'] for c in commandes)
+            self.assertEqual(relances(), 1)  # places nouvelles : bureau relancé pour les montrer
+            self.assertEqual(o['grille'], [12, 6])
+            self.p.Profil().appliquer(ctx)   # verrouillée : reposée à chaque passage, sans relancer le bureau
             self.assertEqual(len(scripts), 2)
+            self.assertEqual(relances(), 1)
             with open(self.f, 'w', encoding='utf-8') as fh:
                 json.dump({**self.PROFIL, 'barre': [], 'installer': [], 'disposition': {**dispo, 'verrou': False}}, fh)
             self.p.Profil().appliquer(ctx)   # verrou retiré : déverrouillage, puis plus rien tant que le profil ne change pas
