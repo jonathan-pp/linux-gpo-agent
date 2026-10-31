@@ -324,6 +324,36 @@ class ProfilBureau(unittest.TestCase):
         b = {**a, 'fond': '', 'fond_style': 0}
         self.assertEqual(self.p.fusionner([a, b])['fond_style'], 3)   # le style suit l’image : un profil sans fond ne le change pas
 
+    def test_github_derniere_version(self):
+        from linux_gpo.ext import logiciels
+        noms = ['SHA256SUMS.txt', 'x-1-linux-aarch64.deb', 'x-1-linux-x86_64.deb', 'x-1-linux-x86_64.AppImage', 'x-1-linux-x86_64.rpm']
+        self.assertEqual(logiciels.choisir_fichier(noms, 'apt', 'x86_64'), 'x-1-linux-x86_64.deb')
+        self.assertEqual(logiciels.choisir_fichier(noms, 'apt', 'aarch64'), 'x-1-linux-aarch64.deb')
+        self.assertIsNone(logiciels.choisir_fichier(noms, 'pacman', 'x86_64'))        # pas de .pkg.tar.zst
+        self.assertIsNone(logiciels.choisir_fichier(noms, 'dnf', 'x86_64'))
+        versions = ['p_1_amd64-bookworm.deb', 'p_1_amd64-noble.deb', 'p_1_amd64.deb']
+        self.assertEqual(logiciels.choisir_fichier(versions, 'apt', 'x86_64', ('noble', '2404')), 'p_1_amd64-noble.deb')
+        self.assertEqual(logiciels.choisir_fichier(versions, 'apt', 'x86_64', ('trixie', '13')), 'p_1_amd64.deb')   # générique avant une autre version
+        self.assertEqual(logiciels.choisir_fichier(['a.deb', 'b-i386.deb'], 'apt', 'x86_64'), 'a.deb')
+        self.assertIsNone(logiciels.choisir_fichier(['../x.deb'], 'apt', 'x86_64'))     # nom de fichier suspect
+        self.assertFalse(logiciels.DEPOT.match('a/b/c') or logiciels.DEPOT.match('a b/c') or logiciels.DEPOT.match('../x'))
+        code, message = logiciels.installer_github('apt', 'pas un dépôt')
+        self.assertEqual(code, 1)
+        self.assertEqual(logiciels.installer_github('dnf', 'a/b')[0], 1)
+
+    def test_installateur_github_dans_un_profil(self):
+        profil = {**self.PROFIL, 'apps': [{'id': 'deckcraft', 'nom': 'deckcraft', 'type': 'appli',
+                                           'installateurs': [{'methode': 'github', 'paquet': 'storytold/deckcraft', 'distros': ['debian']},
+                                                             {'methode': 'github', 'paquet': 'pas un depot'}]}]}
+        with open(self.f, 'w', encoding='utf-8') as fh:
+            json.dump(profil, fh)
+        app = self.p.charger(self.f)['apps']['deckcraft']
+        self.assertEqual([i['paquet'] for i in app['installateurs']], ['storytold/deckcraft'])
+        self.assertEqual(self.p.choisir(app, 'debian', 'apt')['methode'], 'github')
+        self.assertIsNone(self.p.choisir(app, 'debian', 'dnf'))     # ni .deb ni .pkg.tar.zst
+        flat = {**app, 'installateurs': [*app['installateurs'], {'methode': 'flatpak', 'paquet': 'org.x.Y', 'classic': False, 'distros': []}]}
+        self.assertEqual(self.p.choisir(flat, 'debian', 'apt')['methode'], 'flatpak')   # GitHub en dernier
+
     def test_lecture_et_choix_de_l_installateur(self):
         p = self.p.charger(self.f)
         self.assertEqual(sorted(p['apps']), ['partage-rh', 'pirate', 'std-7zip', 'std-firefox', 'std-vlc', 'web-intranet'])

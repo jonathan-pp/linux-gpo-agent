@@ -52,13 +52,13 @@ DEMANDES = '/var/spool/linux-gpo'          # 1733 : chaque utilisateur y dépose
 RESULTATS = '/run/linux-gpo/resultats'     # 0755 : réponse du service, lisible par la session qui attend
 ID = re.compile(r'^[a-z0-9][a-z0-9._-]{0,63}$')
 PAQUET = {'native': re.compile(r'^[a-z0-9][a-z0-9.+_-]{0,100}$'), 'flatpak': re.compile(r'^[A-Za-z][\w-]*(\.[\w-]+){2,}$'),
-          'snap': re.compile(r'^[a-z0-9][a-z0-9-]{0,60}$')}
+          'snap': re.compile(r'^[a-z0-9][a-z0-9-]{0,60}$'), 'github': re.compile(r'^[A-Za-z0-9][A-Za-z0-9-]{0,38}/\w[\w.-]{0,99}$')}
 GUID = re.compile(r'^\{[0-9A-Fa-f-]{36}\}$')
 EXPORTS = ['/var/lib/flatpak/exports/share', '~/.local/share/flatpak/exports/share']
 TAILLES = ['scalable', '512x512', '256x256', '128x128', '96x96', '64x64', '48x48']
 # ordre de préférence des installateurs (celui de PXE Deploy) ; distribution inconnue : Flatpak d’abord
-ORDRE = {'debian': ['native', 'flatpak', 'snap'], 'ubuntu': ['native', 'snap', 'flatpak'], 'arch': ['native', 'flatpak'],
-         None: ['flatpak', 'native', 'snap']}
+ORDRE = {'debian': ['native', 'flatpak', 'snap', 'github'], 'ubuntu': ['native', 'snap', 'flatpak', 'github'], 'arch': ['native', 'flatpak', 'github'],
+         None: ['flatpak', 'native', 'snap', 'github']}
 NOUVEL_ESSAI = 30 * 60                      # application en échec : redemandée au plus toutes les 30 minutes
 ATTENTE = 40 * 60                           # attente maximale du service d’installation par la session
 
@@ -168,6 +168,8 @@ def choisir(app: dict, d: str | None, gestionnaire: str | None) -> dict | None:
                 continue
             if m == 'native' and not gestionnaire:
                 continue
+            if m == 'github' and gestionnaire not in ('apt', 'pacman'):
+                continue  # .deb ou .pkg.tar.zst seulement
             return i
     return None
 
@@ -191,13 +193,15 @@ def lanceurs_systeme() -> dict[str, str]:
 def presente(app: dict, gestionnaire: str | None) -> bool:
     """Vrai si l’un des installateurs de l’application l’a déjà mise sur le poste, ou si elle y est autrement (un
     LibreOffice de la distribution alors que la bibliothèque ne propose que Flatpak) : pas de seconde copie."""
-    from .logiciels import installe
+    from .logiciels import github_present, installe
     for i in app.get('installateurs') or []:
         if i['methode'] == 'flatpak' and _flatpak_present(i['paquet']):
             return True
         if i['methode'] == 'snap' and os.path.isdir(f"/snap/{i['paquet']}/current"):
             return True
         if i['methode'] == 'native' and gestionnaire and installe(gestionnaire, i['paquet']):
+            return True
+        if i['methode'] == 'github' and github_present(gestionnaire, i['paquet']):
             return True
     return bool(lanceur_connu(app, lanceurs_systeme()))
 
@@ -303,9 +307,9 @@ def lien(nom: str, url: str, icone: str) -> str:
 
 def installer_apps(ctx, ext: str, apps: list[dict]) -> tuple[list[str], dict[str, str]]:
     """Installe (root) les applications absentes avec leur meilleur installateur : (installées, {id: erreur})."""
-    from .logiciels import gestionnaire, installer, installer_flatpaks
+    from .logiciels import gestionnaire, installer, installer_flatpaks, installer_github
     g, d = gestionnaire(), distribution()
-    faites, echecs, natifs, flatpaks, snaps = [], {}, {}, {}, {}
+    faites, echecs, natifs, flatpaks, snaps, githubs = [], {}, {}, {}, {}, {}
     for a in apps:
         if presente(a, g):
             continue
@@ -313,9 +317,9 @@ def installer_apps(ctx, ext: str, apps: list[dict]) -> tuple[list[str], dict[str
         if i is None:
             echecs[a['id']] = f"aucun installateur pour {d or 'cette distribution'}"
             continue
-        {'native': natifs, 'flatpak': flatpaks, 'snap': snaps}[i['methode']][a['id']] = i
+        {'native': natifs, 'flatpak': flatpaks, 'snap': snaps, 'github': githubs}[i['methode']][a['id']] = i
     if ctx.simuler:
-        for groupe in (natifs, flatpaks, snaps):
+        for groupe in (natifs, flatpaks, snaps, githubs):
             for k, i in groupe.items():
                 ctx.noter(ext, f"{k} : à installer ({i['methode']} {i['paquet']})")
         return [], echecs
@@ -338,6 +342,9 @@ def installer_apps(ctx, ext: str, apps: list[dict]) -> tuple[list[str], dict[str
             continue
         r = lancer(['snap', 'install', i['paquet']] + (['--classic'] if i['classic'] else []), delai=3600)
         (faites.append(k) if r.returncode == 0 else echecs.__setitem__(k, (r.stderr or r.stdout).strip()[-200:]))
+    for k, i in githubs.items():
+        code, msg = installer_github(g, i['paquet'])
+        (faites.append(k) if code == 0 else echecs.__setitem__(k, msg))
     for k in faites:
         ctx.noter(ext, f'{k} : installée')
     for k, m in echecs.items():
