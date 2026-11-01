@@ -6,6 +6,7 @@ import os
 
 from . import Extension
 from .. import chrome_types
+from .certificats import FICHIER as AUTORITES, empreinte, lire_fichier, magasin
 from ..preg import REG_DWORD, REG_MULTI_SZ, REG_SZ
 from ..systeme import chemin, outil
 
@@ -92,9 +93,15 @@ class Navigateurs(Extension):
     def appliquer(self, ctx):
         pol = ctx.pol
         ff = pol.entrees(K_FIREFOX)
-        if ff:
-            ctx.f.ecrire(FIREFOX, json.dumps({'policies': firefox_json(ff)}, indent=2, ensure_ascii=False) + '\n', self.nom)
-            ctx.noter(self.nom, f'Firefox : {len(ff)} réglage(s) → {FIREFOX}')
+        politiques = firefox_json(ff) if ff else {}
+        autorites = _autorites_firefox()
+        if autorites:
+            # Firefox a son propre magasin : les autorités du domaine y sont importées (en plus de celles de la GPO)
+            inst = politiques.setdefault('Certificates', {}).setdefault('Install', [])
+            inst += [a for a in autorites if a not in inst]
+        if politiques:
+            ctx.f.ecrire(FIREFOX, json.dumps({'policies': politiques}, indent=2, ensure_ascii=False) + '\n', self.nom)
+            ctx.noter(self.nom, f'Firefox : {len(ff)} réglage(s), {len(autorites)} autorité(s) du domaine → {FIREFOX}')
         for cle, dossier, toujours in CHROMIUMS:
             e = pol.entrees(cle)
             if not e:
@@ -107,3 +114,16 @@ class Navigateurs(Extension):
                 if d:
                     ctx.f.ecrire(f'{dossier}/{genre}/linux-gpo.json', json.dumps(d, indent=2, ensure_ascii=False) + '\n', self.nom)
             ctx.noter(self.nom, f'{cle.split(chr(92))[-1]} : {len(e)} réglage(s) → {dossier}')
+
+
+def _autorites_firefox() -> list[str]:
+    """Fichiers des autorités du domaine posés par l’extension autorites (un certificat par fichier pour Firefox)."""
+    m = magasin()
+    try:
+        with open(chemin(AUTORITES), encoding='ascii') as fh:
+            ders = lire_fichier(fh.read())
+    except OSError:
+        return []
+    if not m:
+        return [AUTORITES] if ders else []
+    return [f'{m[0]}/linux-gpo-{empreinte(d)}.crt' for d in ders if os.path.exists(chemin(f'{m[0]}/linux-gpo-{empreinte(d)}.crt'))]

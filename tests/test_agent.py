@@ -307,6 +307,102 @@ class Maj(unittest.TestCase):
                 self.assertRaises(systeme.ErreurAgent):
             maj.mettre_a_jour(c, True)
 
+    def test_certificat_de_la_console_toujours_verifie(self):
+        import ssl
+        from unittest import mock
+        from linux_gpo import maj
+        vus = []
+
+        def ouvrir(req, timeout, context):
+            vus.append(context)
+            raise OSError('arrêt du test')
+        with mock.patch.object(maj.urllib.request, 'urlopen', side_effect=ouvrir):
+            for url in ('https://dc01.exemple.local:8443/linux/linux-gpo.tar.gz', maj.GITHUB):
+                with self.assertRaises(OSError):
+                    maj.telecharger(url)
+        self.assertEqual([(c.verify_mode, c.check_hostname) for c in vus], [(ssl.CERT_REQUIRED, True)] * 2)
+
+
+class Autorites(unittest.TestCase):
+    """Autorités publiées dans l’annuaire → magasin du système, Firefox et base NSS de la session."""
+
+    def setUp(self):
+        from linux_gpo.fichiers import Fichiers
+        self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d)
+        self.f = Fichiers(os.path.join(self.d, 'etat'))
+        self.ca = b'\x30\x82' + bytes(range(200))
+
+    def contexte(self, ders):
+        from types import SimpleNamespace
+        cfg = 'CN=Configuration,DC=exemple,DC=local'
+
+        class Annuaire:
+            def chercher(self, base, filtre, attrs=None, portee='base'):
+                if base == '':
+                    return [{'dn': '', 'configurationnamingcontext': [cfg.encode()]}]
+                assert base.endswith(',CN=Services,' + cfg) and portee == 'one'
+                return [{'dn': 'CN=EXEMPLE-CA,' + base, 'cacertificate': ders}]
+        return SimpleNamespace(annuaire=Annuaire(), conf=SimpleNamespace(base='DC=exemple,DC=local'), f=self.f, simuler=False,
+                               pol=SimpleNamespace(entrees=lambda cle: []), rapport={},
+                               noter=lambda e, t: None)
+
+    def test_magasin_firefox_et_retrait(self):
+        from types import SimpleNamespace
+        from unittest import mock
+        from linux_gpo.ext import certificats, navigateurs
+        commandes = []
+        lancer = lambda cmd, **k: commandes.append(cmd) or SimpleNamespace(returncode=0, stdout='', stderr='')
+        with mock.patch.object(systeme, 'RACINE', self.d), mock.patch.object(certificats, 'lancer', side_effect=lancer), \
+                mock.patch.object(certificats, 'famille', return_value='debian'), \
+                mock.patch.object(certificats, 'est_nixos', return_value=False), \
+                mock.patch.object(certificats, 'outil', return_value='/usr/sbin/update-ca-certificates'):
+            os.makedirs(os.path.join(self.d, 'usr/local/share/ca-certificates'))
+            a = certificats.Autorites()
+            for ders in ([b'\x00', self.ca], [self.ca]):    # octet nul de certutil ignoré ; deuxième passage : rien ne change
+                ctx = self.contexte(ders)
+                a.appliquer(ctx)
+                navigateurs.Navigateurs().appliquer(ctx)
+                a.apres(ctx, self.f.changes_de('autorites'))
+                self.f.changes.clear()
+            crt = f'/usr/local/share/ca-certificates/linux-gpo/linux-gpo-{certificats.empreinte(self.ca)}.crt'
+            with open(self.d + crt) as fh:
+                self.assertEqual(certificats.lire_fichier(fh.read()), [self.ca])
+            with open(self.d + navigateurs.FIREFOX) as fh:
+                self.assertEqual(json.load(fh)['policies']['Certificates']['Install'], [crt])
+            self.assertEqual(commandes, [['update-ca-certificates']])
+            # autorité retirée de l’annuaire (passage suivant) : fichiers enlevés et magasin reconstruit
+            from linux_gpo.fichiers import Fichiers
+            self.f.sauver()
+            self.f = Fichiers(self.f.dossier)
+            ctx = self.contexte([])
+            a.appliquer(ctx)
+            changes = self.f.terminer()
+            a.apres(ctx, [p for p, e in changes.items() if e == 'autorites'])
+            self.assertFalse(os.path.exists(self.d + crt))
+            self.assertEqual(commandes, [['update-ca-certificates']] * 2)
+
+    def test_session_chrome(self):
+        from types import SimpleNamespace
+        from unittest import mock
+        from linux_gpo.ext import certificats
+        os.makedirs(os.path.join(self.d, 'etc/linux-gpo'))
+        with open(os.path.join(self.d, 'etc/linux-gpo/autorites.pem'), 'w') as fh:
+            fh.write(certificats.pem(self.ca))
+        commandes = []
+        lancer = lambda cmd, **k: commandes.append(cmd[:2] + cmd[-2:]) or SimpleNamespace(returncode=0, stdout='', stderr='')
+        ctx = SimpleNamespace(f=self.f, simuler=False, noter=lambda e, t: None)
+        with mock.patch.object(systeme, 'RACINE', self.d), mock.patch.object(certificats, 'lancer', side_effect=lancer), \
+                mock.patch.object(certificats, 'outil', return_value='/usr/bin/certutil'), \
+                mock.patch.dict(os.environ, {'HOME': self.d}):
+            certificats.AutoritesSession().appliquer(ctx)
+            nom = 'linux-gpo ' + certificats.empreinte(self.ca)
+            self.assertEqual([c[:2] for c in commandes], [['certutil', '-N'], ['certutil', '-A']])
+            self.assertEqual(self.f.memoire('autorites-session')['poses'], [nom])
+            os.unlink(os.path.join(self.d, 'etc/linux-gpo/autorites.pem'))
+            certificats.AutoritesSession().appliquer(ctx)
+            self.assertEqual(commandes[-1], ['certutil', '-D', '-n', nom])
+
 
 class ProfilBureau(unittest.TestCase):
     FX = {'methode': 'flatpak', 'paquet': 'org.mozilla.firefox'}

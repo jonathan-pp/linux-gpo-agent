@@ -1,8 +1,8 @@
 """Mise à jour de l’agent : `sudo linux-gpo maj`.
 
 Source (dans l’ordre) : `source_maj` de /etc/linux-gpo/agent.conf (adresse d’une archive .tar.gz, ou « github ») ; sinon la
-Console Annuaire du domaine (https://<contrôleur>:8443/linux/linux-gpo.tar.gz, le contrôleur étant `serveur` ou trouvé par DNS) ;
-sinon GitHub. L’archive est vérifiée (agent linux-gpo complet), puis son install.sh est lancé : unités, gpupdate et configuration
+Console Annuaire du domaine (https://<contrôleur>:8443/linux/linux-gpo.tar.gz, le contrôleur étant `serveur` ou trouvé par DNS,
+certificat vérifié avec l’autorité du domaine) ; sinon GitHub. L’archive est vérifiée (agent linux-gpo complet), puis son install.sh est lancé : unités, gpupdate et configuration
 sont remis à jour, la configuration et l’état du poste sont conservés. Rien n’est fait si l’archive est celle déjà installée.
 """
 from __future__ import annotations
@@ -17,6 +17,7 @@ import tempfile
 import urllib.request
 
 from . import dns
+from .ext.certificats import FICHIER as AUTORITES
 from .systeme import ErreurAgent
 
 GITHUB = 'https://github.com/jonathan-pp/linux-gpo-agent/archive/refs/heads/main.tar.gz'
@@ -35,10 +36,12 @@ def sources(c) -> list[str]:
 
 
 def telecharger(url: str) -> bytes:
+    # certificat toujours vérifié : l’archive installée est lancée en root. La Console Annuaire présente un certificat
+    # de l’autorité du domaine, installée par l’extension autorites ; sans elle (ancien contrôleur), la source est
+    # refusée et GitHub prend le relais.
     contexte = ssl.create_default_context()
-    if 'github.com' not in url:
-        # Console Annuaire : certificat auto-signé du contrôleur
-        contexte.check_hostname, contexte.verify_mode = False, ssl.CERT_NONE
+    if os.path.exists(AUTORITES):
+        contexte.load_verify_locations(AUTORITES)
     req = urllib.request.Request(url, headers={'User-Agent': 'linux-gpo'})
     with urllib.request.urlopen(req, timeout=60, context=contexte) as r:  # noqa: S310 - https ou adresse choisie par l’admin
         data = r.read(TAILLE_MAX + 1)
