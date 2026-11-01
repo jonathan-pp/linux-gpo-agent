@@ -57,14 +57,14 @@ class Extension:
 
 def extensions(machine: bool = True) -> list[Extension]:
     from . import (acces, bouclage, bureau, certificats, deploiement, heure, laps, logiciels, messages, mises_a_jour,
-                   navigateurs, parefeu, permissions, profil, raccourcis, scripts, ssh, sudo, utilisateur)
+                   navigateurs, parefeu, permissions, profil, raccourcis, scripts, ssh, sudo, utilisateur, vpn)
     if not machine:
         return [utilisateur.BureauUtilisateur(), utilisateur.Lecteurs(), raccourcis.Raccourcis(), profil.Profil(),
                 utilisateur.ScriptsSession(), certificats.AutoritesSession()]
     # autorités avant les navigateurs : Firefox reçoit la liste des autorités installées
     return [messages.Messages(), sudo.Sudo(), acces.Acces(), ssh.Ssh(), parefeu.Parefeu(), scripts.Scripts(),
             deploiement.Deploiement(), certificats.Autorites(), navigateurs.Navigateurs(), bureau.Bureau(), permissions.Permissions(),
-            mises_a_jour.MisesAJour(), logiciels.Logiciels(), heure.Heure(), laps.Laps(), bouclage.Bouclage()]
+            mises_a_jour.MisesAJour(), logiciels.Logiciels(), heure.Heure(), laps.Laps(), vpn.Vpn(), bouclage.Bouclage()]
 
 
 def vrai(v) -> bool:

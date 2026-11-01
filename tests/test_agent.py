@@ -775,5 +775,84 @@ class Laps(unittest.TestCase):
         self.assertEqual(ecrits, [])                                                 # nom Windows : refusé sous Linux
 
 
+class Vpn(unittest.TestCase):
+    DN = 'CN=PC01,CN=Computers,DC=exemple,DC=local'
+    CLE_SERVEUR = 'hSDwCYkwp1R0i33ctD73Wg2/Og0mOBr066SpjqqbTmo='
+
+    def setUp(self):
+        from linux_gpo.ext import vpn
+        from linux_gpo.fichiers import Fichiers
+        self.v = vpn
+        self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d)
+        self.f = Fichiers(os.path.join(self.d, 'etat'))
+        systeme.RACINE = self.d
+        self.addCleanup(setattr, systeme, 'RACINE', '')
+
+    def invitation(self, **k):
+        return json.dumps({'v': 1, 'ip': '10.99.0.5', 'cle': self.CLE_SERVEUR, 'point': 'vpn.exemple.fr:51820',
+                           'routes': ['10.99.0.0/24', '10.1.0.10/32'], 'dns': '10.1.0.10', 'controleur': '10.1.0.10',
+                           'domaine': 'exemple.local', 'keepalive': 25, 'auto': True, **k})
+
+    def contexte(self, objet):
+        from types import SimpleNamespace
+        ecrits = []
+
+        class Annuaire:
+            def chercher(self, base, filtre, attrs=None, portee='base'):
+                return [objet] if 'PC01$' in filtre else []
+
+            def modifier(self, dn, v):
+                ecrits.append((dn, dict(v)))
+                objet['msds-cloudextensionattribute20'] = [v[0][1].encode()]
+        ctx = SimpleNamespace(annuaire=Annuaire(), conf=SimpleNamespace(base='DC=exemple,DC=local', compte='PC01$',
+                              domaine='exemple.local', etat='/etat'), f=self.f, simuler=False, rapport={},
+                              noter=lambda e, t: ctx.rapport.setdefault(e, []).append(t))
+        return ctx, ecrits
+
+    def test_cles_x25519(self):
+        # RFC 7748, 6.1 : clé publique d’Alice
+        privee = bytes.fromhex('77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a')
+        self.assertEqual(self.v._x25519(privee).hex(), '8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a')
+        k = self.v.nouvelle_cle()
+        self.assertRegex(k, self.v.CLE)
+        self.assertRegex(self.v.cle_publique(k), self.v.CLE)
+
+    def test_invitation_verifiee(self):
+        self.assertEqual(self.v.lire_invitation(self.invitation())['routes'], ['10.99.0.0/24', '10.1.0.10/32'])
+        for mauvais in ({'point': "x.fr:1;reboot"}, {'domaine': 'a\nb'}, {'controleur': "1.2.3.4' ; rm"}, {'cle': 'abc'},
+                        {'routes': ['10.0.0.0/8\n[x]']}, {'v': 2}):
+            with self.assertRaises(self.v.ErreurAgent):
+                self.v.lire_invitation(self.invitation(**mauvais))
+
+    def test_cle_publiee_puis_connexion(self):
+        from unittest import mock
+        objet = {'dn': self.DN, 'msds-cloudextensionattribute19': [self.invitation().encode()]}
+        ctx, ecrits = self.contexte(objet)
+        with mock.patch.object(self.v, 'outil', return_value='/usr/bin/nmcli'):
+            self.v.Vpn().appliquer(ctx)
+        (dn, v), = ecrits
+        privee = open(os.path.join(self.d, 'etat', 'vpn.key')).read().strip()
+        self.assertEqual((dn, v), (self.DN, {self.v.ATTR_CLE: 'wg ' + self.v.cle_publique(privee)}))
+        self.assertEqual(os.stat(os.path.join(self.d, 'etat', 'vpn.key')).st_mode & 0o777, 0o600)
+        self.assertNotIn(privee, json.dumps(ctx.rapport))
+        self.assertEqual(set(self.f.demandes), {self.v.NM, self.v.REPARTITEUR})
+        self.assertEqual(os.stat(self.d + self.v.NM).st_mode & 0o777, 0o600)
+        # clé déjà publiée : rien n’est réécrit dans l’annuaire
+        ctx2, ecrits2 = self.contexte(objet)
+        with mock.patch.object(self.v, 'outil', return_value='/usr/bin/nmcli'):
+            self.v.Vpn().appliquer(ctx2)
+        self.assertEqual(ecrits2, [])
+        texte = self.v.connexion_nm(self.v.lire_invitation(self.invitation()), privee, 'u')
+        self.assertIn(f'[wireguard-peer.{self.CLE_SERVEUR}]', texte)
+        self.assertIn('never-default=true', texte)
+        self.assertIn('autoconnect=false', texte)
+
+    def test_sans_invitation_rien(self):
+        ctx, ecrits = self.contexte({'dn': self.DN})
+        self.v.Vpn().appliquer(ctx)
+        self.assertEqual((ecrits, self.f.demandes), ([], {}))
+
+
 if __name__ == '__main__':
     unittest.main()
